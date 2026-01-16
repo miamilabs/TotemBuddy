@@ -1,0 +1,41 @@
+## Interface: 20504
+## Title: TotemBuddy
+## Notes: Shaman totem management with quick-access tiles and flexible layout
+## Author: Paul
+## Version: 1.0.0
+## SavedVariables: TotemBuddyDB
+## OptionalDeps: Ace3
+## X-Category: Shaman
+## X-Website:
+## IconTexture: Interface\Icons\Spell_Nature_TotemOfWrath
+
+# Libraries
+embeds.xml
+
+# Core
+Modules\Loader.lua
+TotemBuddy.lua
+
+# Data
+Data\ClassicTotems.lua
+Data\TBCTotems.lua
+
+# Core Modules
+Modules\Core\EventHandler.lua
+Modules\Core\TotemData.lua
+Modules\Core\SpellScanner.lua
+
+# Options
+Modules\Options\OptionsDefaults.lua
+Modules\Options\GeneralTab.lua
+Modules\Options\LayoutTab.lua
+Modules\Options\TotemTab.lua
+Modules\Options\OptionsMain.lua
+
+# UI
+Modules\UI\TotemTile.lua
+Modules\UI\TotemSelector.lua
+Modules\UI\TotemBar.lua
+
+# Localization
+Localization\enUS.lua
