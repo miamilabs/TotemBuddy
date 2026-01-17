@@ -11,6 +11,7 @@ local _EventHandler = EventHandler.private
 local SpellScanner = nil
 local TotemBar = nil
 local TotemSelector = nil
+local TotemSets = nil
 
 -- Throttling state
 _EventHandler.cooldownDebounce = nil
@@ -42,6 +43,9 @@ local function GetModules()
     end
     if not TotemSelector then
         TotemSelector = TotemBuddyLoader:ImportModule("TotemSelector")
+    end
+    if not TotemSets then
+        TotemSets = TotemBuddyLoader:ImportModule("TotemSets")
     end
 end
 
@@ -152,6 +156,11 @@ function _EventHandler:OnLeaveCombat()
     -- Restore lock state based on settings
     if TotemBar and TotemBar.SetLocked then
         TotemBar:SetLocked(TotemBuddy.db.profile.locked)
+    end
+
+    -- Process any pending set changes (v2.0)
+    if TotemSets and TotemSets.ProcessPending then
+        TotemSets:ProcessPending()
     end
 
     -- Process any pending updates

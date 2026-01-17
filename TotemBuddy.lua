@@ -8,7 +8,7 @@ local TotemBuddy = LibStub("AceAddon-3.0"):NewAddon("TotemBuddy", "AceEvent-3.0"
 _G.TotemBuddy = TotemBuddy
 
 -- Version info
-TotemBuddy.version = "1.0.0"
+TotemBuddy.version = "2.0.0"
 
 -- Element constants (matches WoW API GetTotemInfo slot order)
 TotemBuddy.FIRE = 1
@@ -62,9 +62,34 @@ function TotemBuddy:OnInitialize()
     local OptionsDefaults = TotemBuddyLoader:ImportModule("OptionsDefaults")
     self.db = LibStub("AceDB-3.0"):New("TotemBuddyDB", OptionsDefaults:GetDefaults(), true)
 
+    -- Run migrations if needed (v2.0 schema changes)
+    local Migration = TotemBuddyLoader:ImportModule("Migration")
+    if Migration then
+        local success, results = Migration:Run(self.db)
+        if not success then
+            self:Print("|cffff0000Warning: Migration failed. Some settings may be reset.|r")
+        end
+    end
+
     -- Ensure defaultTotems table exists (AceDB might not init nested tables properly)
     if not self.db.profile.defaultTotems then
         self.db.profile.defaultTotems = {}
+    end
+
+    -- Ensure v2.0 tables exist
+    if not self.db.profile.sets then
+        self.db.profile.sets = {}
+    end
+    if not self.db.profile.setOrder then
+        self.db.profile.setOrder = {}
+    end
+    if not self.db.profile.modifierOverrides then
+        self.db.profile.modifierOverrides = {
+            [1] = { default = nil, shift = nil, ctrl = nil, alt = nil },
+            [2] = { default = nil, shift = nil, ctrl = nil, alt = nil },
+            [3] = { default = nil, shift = nil, ctrl = nil, alt = nil },
+            [4] = { default = nil, shift = nil, ctrl = nil, alt = nil },
+        }
     end
 
     -- Register callbacks for profile changes
@@ -89,6 +114,12 @@ function TotemBuddy:OnEnable()
     local _, class = UnitClass("player")
     if class ~= "SHAMAN" then
         return
+    end
+
+    -- Initialize API compatibility layer (must be done early)
+    local APICompat = TotemBuddyLoader:ImportModule("APICompat")
+    if APICompat then
+        APICompat:Initialize()
     end
 
     -- Initialize modules
@@ -162,9 +193,14 @@ end
 function TotemBuddy:SlashCommand(input)
     -- Defensive input handling
     input = input or ""
-    input = input:gsub("^%s*(.-)%s*$", "%1"):lower()  -- trim and lowercase
+    input = input:gsub("^%s*(.-)%s*$", "%1")  -- trim only, preserve case for set names
 
-    if input == "" or input == "options" or input == "config" then
+    -- Split into command and arguments
+    local cmd, args = input:match("^(%S*)%s*(.*)$")
+    cmd = (cmd or ""):lower()
+    args = args or ""
+
+    if cmd == "" or cmd == "options" or cmd == "config" then
         -- Open options panel (handle different WoW versions)
         local OptionsMain = TotemBuddyLoader:ImportModule("OptionsMain")
         if OptionsMain and OptionsMain.Open then
@@ -176,7 +212,7 @@ function TotemBuddy:SlashCommand(input)
         else
             self:Print("Options panel not available.")
         end
-    elseif input == "toggle" then
+    elseif cmd == "toggle" then
         -- Toggle visibility
         local TotemBar = TotemBuddyLoader:ImportModule("TotemBar")
         if TotemBar then
@@ -188,7 +224,7 @@ function TotemBuddy:SlashCommand(input)
                 self.db.profile.enabled = true
             end
         end
-    elseif input == "lock" then
+    elseif cmd == "lock" then
         -- Toggle lock
         self.db.profile.locked = not self.db.profile.locked
         local TotemBar = TotemBuddyLoader:ImportModule("TotemBar")
@@ -196,7 +232,7 @@ function TotemBuddy:SlashCommand(input)
             TotemBar:SetLocked(self.db.profile.locked)
         end
         self:Print("TotemBuddy is now " .. (self.db.profile.locked and "locked" or "unlocked"))
-    elseif input == "reset" then
+    elseif cmd == "reset" then
         -- Reset position
         self.db.profile.posX = 0
         self.db.profile.posY = -200
@@ -207,16 +243,110 @@ function TotemBuddy:SlashCommand(input)
                 self.db.profile.posX, self.db.profile.posY)
         end
         self:Print("TotemBuddy position reset")
-    elseif input == "scan" then
+    elseif cmd == "scan" then
         -- Force rescan totems
         local SpellScanner = TotemBuddyLoader:ImportModule("SpellScanner")
         if SpellScanner then
             SpellScanner:ScanTotems()
             self:Print("Totem scan complete")
         end
-    elseif input == "debug" then
+
+    -- Totem Sets commands (v2.0)
+    elseif cmd == "set" then
+        -- Activate a named set: /tb set <name>
+        local TotemSets = TotemBuddyLoader:ImportModule("TotemSets")
+        if not TotemSets then
+            self:Print("TotemSets module not loaded")
+            return
+        end
+
+        if args == "" then
+            -- Show current set
+            local currentSet = TotemSets:GetActiveSet()
+            if currentSet then
+                self:Print("Active set: " .. currentSet)
+            else
+                self:Print("No active set")
+            end
+            -- List available sets
+            local setNames = TotemSets:GetSetNames()
+            if #setNames > 0 then
+                self:Print("Available sets: " .. table.concat(setNames, ", "))
+            else
+                self:Print("No sets defined. Use /tb saveset <name> to create one.")
+            end
+        else
+            local success, msg = TotemSets:SetActiveSet(args)
+            self:Print(msg or (success and "Set activated" or "Failed to activate set"))
+        end
+
+    elseif cmd == "nextset" then
+        -- Cycle to next set: /tb nextset
+        local TotemSets = TotemBuddyLoader:ImportModule("TotemSets")
+        if TotemSets then
+            local success, msg = TotemSets:CycleNext()
+            if msg then self:Print(msg) end
+        end
+
+    elseif cmd == "prevset" then
+        -- Cycle to previous set: /tb prevset
+        local TotemSets = TotemBuddyLoader:ImportModule("TotemSets")
+        if TotemSets then
+            local success, msg = TotemSets:CyclePrev()
+            if msg then self:Print(msg) end
+        end
+
+    elseif cmd == "saveset" then
+        -- Save current totems as a new set: /tb saveset <name>
+        local TotemSets = TotemBuddyLoader:ImportModule("TotemSets")
+        if not TotemSets then
+            self:Print("TotemSets module not loaded")
+            return
+        end
+
+        if args == "" then
+            self:Print("Usage: /tb saveset <name>")
+        else
+            local success, msg = TotemSets:SaveCurrentAsSet(args)
+            self:Print(msg or (success and "Set saved" or "Failed to save set"))
+        end
+
+    elseif cmd == "delset" then
+        -- Delete a set: /tb delset <name>
+        local TotemSets = TotemBuddyLoader:ImportModule("TotemSets")
+        if not TotemSets then
+            self:Print("TotemSets module not loaded")
+            return
+        end
+
+        if args == "" then
+            self:Print("Usage: /tb delset <name>")
+        else
+            local success, msg = TotemSets:DeleteSet(args)
+            self:Print(msg or (success and "Set deleted" or "Failed to delete set"))
+        end
+
+    elseif cmd == "sets" then
+        -- List all sets: /tb sets
+        local TotemSets = TotemBuddyLoader:ImportModule("TotemSets")
+        if TotemSets then
+            local setNames = TotemSets:GetSetNames()
+            local activeSet = TotemSets:GetActiveSet()
+            if #setNames > 0 then
+                self:Print("=== Totem Sets ===")
+                for _, name in ipairs(setNames) do
+                    local marker = (name == activeSet) and " [ACTIVE]" or ""
+                    self:Print("  " .. name .. marker)
+                end
+            else
+                self:Print("No sets defined. Use /tb saveset <name> to create one.")
+            end
+        end
+
+    elseif cmd == "debug" then
         -- Debug info
         local TotemBar = TotemBuddyLoader:ImportModule("TotemBar")
+        local TotemSets = TotemBuddyLoader:ImportModule("TotemSets")
         self:Print("=== TotemBuddy Debug ===")
         self:Print("Enabled: " .. tostring(self.db.profile.enabled))
         self:Print("Frame exists: " .. tostring(TotemBar and TotemBar.frame ~= nil))
@@ -242,7 +372,15 @@ function TotemBuddy:SlashCommand(input)
         else
             self:Print("  defaultTotems table is nil!")
         end
-    elseif input == "show" then
+        -- Show active set info
+        if TotemSets then
+            self:Print("=== Set Info ===")
+            local activeSet = TotemSets:GetActiveSet()
+            self:Print("Active set: " .. tostring(activeSet or "none"))
+            self:Print("Set count: " .. TotemSets:GetSetCount())
+            self:Print("Pending set: " .. tostring(TotemSets:HasPending() and "yes" or "no"))
+        end
+    elseif cmd == "show" then
         -- Force show the bar
         local TotemBar = TotemBuddyLoader:ImportModule("TotemBar")
         if TotemBar then
@@ -264,6 +402,13 @@ function TotemBuddy:SlashCommand(input)
         self:Print("  /tb scan - Rescan totems")
         self:Print("  /tb show - Force show bar")
         self:Print("  /tb debug - Show debug info")
+        self:Print("Set Commands:")
+        self:Print("  /tb set <name> - Activate a set")
+        self:Print("  /tb sets - List all sets")
+        self:Print("  /tb nextset - Cycle to next set")
+        self:Print("  /tb prevset - Cycle to previous set")
+        self:Print("  /tb saveset <name> - Save current as set")
+        self:Print("  /tb delset <name> - Delete a set")
     end
 end
 
@@ -271,6 +416,117 @@ end
 ---@return boolean inCombat Whether protected actions are blocked
 function TotemBuddy:InCombatLockdown()
     return InCombatLockdown()
+end
+
+--[[
+    Global Keybinding Handlers
+    These functions are called by Bindings.xml when the user presses bound keys.
+    They are defined in the global namespace so WoW can find them.
+]]
+
+--- Cast the default totem for an element (keybind handler)
+--- NOTE: Casting via keybind only works out of combat (SecureActionButton limitation)
+--- For combat casting, click the tile directly or use the SetOverrideBindingClick system
+---@param element number The element index (1=Fire, 2=Earth, 3=Water, 4=Air)
+function TotemBuddy_CastElement(element)
+    if not element or element < 1 or element > 4 then
+        return
+    end
+
+    local TotemBar = TotemBuddyLoader:ImportModule("TotemBar")
+    if not TotemBar or not TotemBar.tiles or not TotemBar.tiles[element] then
+        return
+    end
+
+    local tile = TotemBar.tiles[element]
+
+    -- If in combat, we can't programmatically click secure buttons
+    -- The user should click the tile directly or use SetOverrideBindingClick
+    if InCombatLockdown() then
+        TotemBuddy:Print("Keybind casting is not available in combat. Click the tile directly.")
+        return
+    end
+
+    -- Out of combat: we can safely click the secure button
+    tile:Click("LeftButton")
+end
+
+--- Open the totem selector for an element (keybind handler)
+---@param element number The element index (1=Fire, 2=Earth, 3=Water, 4=Air)
+function TotemBuddy_SelectElement(element)
+    if not element or element < 1 or element > 4 then
+        return
+    end
+
+    local TotemBar = TotemBuddyLoader:ImportModule("TotemBar")
+    local TotemSelector = TotemBuddyLoader:ImportModule("TotemSelector")
+
+    if not TotemBar or not TotemBar.tiles or not TotemBar.tiles[element] then
+        return
+    end
+
+    if not TotemSelector or not TotemSelector.Show then
+        return
+    end
+
+    local tile = TotemBar.tiles[element]
+
+    -- Check combat setting for selector
+    local inCombat = InCombatLockdown()
+    local showInCombat = TotemBuddy.db.profile.showSelectorInCombat
+
+    if not inCombat or showInCombat then
+        TotemSelector:Show(tile)
+    elseif inCombat then
+        TotemBuddy:Print("Cannot open selector during combat.")
+    end
+end
+
+--- Cycle totem sets (keybind handler)
+---@param direction number 1 for next, -1 for previous
+function TotemBuddy_CycleSet(direction)
+    local TotemSets = TotemBuddyLoader:ImportModule("TotemSets")
+    if not TotemSets then
+        return
+    end
+
+    local success, msg
+    if direction == 1 then
+        success, msg = TotemSets:CycleNext()
+    else
+        success, msg = TotemSets:CyclePrev()
+    end
+
+    if msg then
+        TotemBuddy:Print(msg)
+    end
+end
+
+--- Activate a totem set by order index (keybind handler)
+---@param index number The set index (1-5)
+function TotemBuddy_ActivateSet(index)
+    if not index or index < 1 or index > 5 then
+        return
+    end
+
+    local TotemSets = TotemBuddyLoader:ImportModule("TotemSets")
+    if not TotemSets then
+        return
+    end
+
+    -- Get set names in order
+    local setNames = TotemSets:GetSetNames()
+    if not setNames or #setNames < index then
+        TotemBuddy:Print("No set at position " .. index)
+        return
+    end
+
+    local setName = setNames[index]
+    local success, msg = TotemSets:SetActiveSet(setName)
+
+    if msg then
+        TotemBuddy:Print(msg)
+    end
 end
 
 --- Utility: Get the spell ID to use for a totem (handles rank selection)

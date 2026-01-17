@@ -53,6 +53,8 @@ FILES_TO_COPY=(
     "TotemBuddy-WOTLKC.toc"
     "TotemBuddy.lua"
     "embeds.xml"
+    "Bindings.xml"
+    "BindingsStub.lua"
 )
 
 DIRS_TO_COPY=(
