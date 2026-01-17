@@ -3,6 +3,51 @@
     Main entry point using AceAddon-3.0
 ]]
 
+-- =============================================================================
+-- Ace3 Dependency Check (MUST be first before any LibStub calls)
+-- =============================================================================
+if not LibStub then
+    -- LibStub is missing - Ace3 is not installed
+    local warningFrame = CreateFrame("Frame")
+    warningFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+    warningFrame:SetScript("OnEvent", function(self)
+        -- Show error in chat (red)
+        DEFAULT_CHAT_FRAME:AddMessage("|cffff0000TotemBuddy Error:|r Ace3 library is required but not installed!", 1, 0, 0)
+        DEFAULT_CHAT_FRAME:AddMessage("|cffff9900Please install Ace3 from CurseForge or your addon manager.|r", 1, 0.6, 0)
+        -- Also show UI error message
+        if UIErrorsFrame then
+            UIErrorsFrame:AddMessage("TotemBuddy requires Ace3!", 1.0, 0.0, 0.0, 53, 5)
+        end
+        self:UnregisterAllEvents()
+    end)
+    return -- Stop loading the addon
+end
+
+-- Verify required Ace3 libraries are present
+local function CheckAce3Libraries()
+    local required = {"AceAddon-3.0", "AceDB-3.0", "AceEvent-3.0", "AceConsole-3.0"}
+    local missing = {}
+    for _, lib in ipairs(required) do
+        if not LibStub:GetLibrary(lib, true) then
+            table.insert(missing, lib)
+        end
+    end
+    return missing
+end
+
+local missingLibs = CheckAce3Libraries()
+if #missingLibs > 0 then
+    local warningFrame = CreateFrame("Frame")
+    warningFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+    warningFrame:SetScript("OnEvent", function(self)
+        DEFAULT_CHAT_FRAME:AddMessage("|cffff0000TotemBuddy Error:|r Missing Ace3 libraries: " .. table.concat(missingLibs, ", "), 1, 0, 0)
+        DEFAULT_CHAT_FRAME:AddMessage("|cffff9900Please reinstall Ace3 or use a complete addon package.|r", 1, 0.6, 0)
+        self:UnregisterAllEvents()
+    end)
+    return -- Stop loading the addon
+end
+-- =============================================================================
+
 ---@class TotemBuddy : AceAddon, AceEvent-3.0, AceConsole-3.0
 local TotemBuddy = LibStub("AceAddon-3.0"):NewAddon("TotemBuddy", "AceEvent-3.0", "AceConsole-3.0")
 _G.TotemBuddy = TotemBuddy

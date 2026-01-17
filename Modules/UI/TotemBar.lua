@@ -16,6 +16,9 @@ local ExtrasScanner = nil
 local CallTile = nil
 local ImbueTile = nil
 local ShieldTile = nil
+local CooldownTracker = nil
+local DebuffTracker = nil
+local ProcTracker = nil
 
 -- Main frame
 TotemBar.frame = nil
@@ -28,6 +31,15 @@ TotemBar.imbueMH = nil
 TotemBar.imbueOH = nil
 TotemBar.shieldTile = nil
 TotemBar.pendingExtrasUpdate = false
+
+-- Cooldown Tracker (v2.2)
+TotemBar.cooldownTrackerFrame = nil
+
+-- Debuff Tracker (v2.2)
+TotemBar.debuffTrackerFrame = nil
+
+-- Proc Tracker (v2.2)
+TotemBar.procTrackerFrame = nil
 
 --- Create the totem bar
 function TotemBar:Create()
@@ -246,6 +258,77 @@ function TotemBar:UpdateLayout()
     end
 
     self.frame:SetSize(width, height)
+
+    -- Position cooldown tracker relative to the main bar
+    self:UpdateCooldownTrackerPosition()
+
+    -- Position debuff tracker relative to the main bar
+    self:UpdateDebuffTrackerPosition()
+
+    -- Position proc tracker relative to the main bar
+    self:UpdateProcTrackerPosition()
+end
+
+--- Update cooldown tracker position relative to the main bar
+function TotemBar:UpdateCooldownTrackerPosition()
+    if not self.cooldownTrackerFrame or not self.frame then return end
+    if not self.cooldownTrackerFrame:IsShown() then return end
+
+    local db = TotemBuddy.db.profile
+    local position = db.cooldownTrackerPosition or "below"
+    local spacing = 8  -- Gap between tracker and main bar
+
+    self.cooldownTrackerFrame:ClearAllPoints()
+
+    if position == "above" then
+        self.cooldownTrackerFrame:SetPoint("BOTTOM", self.frame, "TOP", 0, spacing)
+    elseif position == "below" then
+        self.cooldownTrackerFrame:SetPoint("TOP", self.frame, "BOTTOM", 0, -spacing)
+    elseif position == "left" then
+        self.cooldownTrackerFrame:SetPoint("RIGHT", self.frame, "LEFT", -spacing, 0)
+    elseif position == "right" then
+        self.cooldownTrackerFrame:SetPoint("LEFT", self.frame, "RIGHT", spacing, 0)
+    end
+end
+
+--- Update debuff tracker position relative to the main bar
+function TotemBar:UpdateDebuffTrackerPosition()
+    if not self.debuffTrackerFrame or not self.frame then return end
+    if not self.debuffTrackerFrame:IsShown() then return end
+
+    local db = TotemBuddy.db.profile
+    local position = db.debuffTrackerPosition or "above"
+    local spacing = 8  -- Gap between tracker and main bar
+
+    self.debuffTrackerFrame:ClearAllPoints()
+
+    if position == "above" then
+        -- If cooldown tracker is also above, stack them
+        if self.cooldownTrackerFrame and self.cooldownTrackerFrame:IsShown() and db.cooldownTrackerPosition == "above" then
+            self.debuffTrackerFrame:SetPoint("BOTTOM", self.cooldownTrackerFrame, "TOP", 0, spacing)
+        else
+            self.debuffTrackerFrame:SetPoint("BOTTOM", self.frame, "TOP", 0, spacing)
+        end
+    elseif position == "below" then
+        -- If cooldown tracker is also below, stack them
+        if self.cooldownTrackerFrame and self.cooldownTrackerFrame:IsShown() and db.cooldownTrackerPosition == "below" then
+            self.debuffTrackerFrame:SetPoint("TOP", self.cooldownTrackerFrame, "BOTTOM", 0, -spacing)
+        else
+            self.debuffTrackerFrame:SetPoint("TOP", self.frame, "BOTTOM", 0, -spacing)
+        end
+    elseif position == "left" then
+        if self.cooldownTrackerFrame and self.cooldownTrackerFrame:IsShown() and db.cooldownTrackerPosition == "left" then
+            self.debuffTrackerFrame:SetPoint("RIGHT", self.cooldownTrackerFrame, "LEFT", -spacing, 0)
+        else
+            self.debuffTrackerFrame:SetPoint("RIGHT", self.frame, "LEFT", -spacing, 0)
+        end
+    elseif position == "right" then
+        if self.cooldownTrackerFrame and self.cooldownTrackerFrame:IsShown() and db.cooldownTrackerPosition == "right" then
+            self.debuffTrackerFrame:SetPoint("LEFT", self.cooldownTrackerFrame, "RIGHT", spacing, 0)
+        else
+            self.debuffTrackerFrame:SetPoint("LEFT", self.frame, "RIGHT", spacing, 0)
+        end
+    end
 end
 
 --- Refresh all tiles with current settings
@@ -357,6 +440,14 @@ function TotemBar:Show()
             self.timeSinceLastUpdate = 0
             self.frame:SetScript("OnUpdate", self.onUpdateFunc)
         end
+        -- Show cooldown tracker if enabled
+        self:UpdateCooldownTrackerVisibility()
+
+        -- Show debuff tracker if enabled
+        self:UpdateDebuffTrackerVisibility()
+
+        -- Show proc tracker if enabled
+        self:UpdateProcTrackerVisibility()
     end
 end
 
@@ -381,6 +472,21 @@ function TotemBar:Hide()
     local TotemSelector = TotemBuddyLoader:ImportModule("TotemSelector")
     if TotemSelector then
         TotemSelector:Hide()
+    end
+
+    -- Hide cooldown tracker
+    if self.cooldownTrackerFrame then
+        self.cooldownTrackerFrame:Hide()
+    end
+
+    -- Hide debuff tracker
+    if self.debuffTrackerFrame then
+        self.debuffTrackerFrame:Hide()
+    end
+
+    -- Hide proc tracker
+    if self.procTrackerFrame then
+        self.procTrackerFrame:Hide()
     end
 end
 
@@ -516,6 +622,130 @@ function TotemBar:CreateExtraTiles()
     if ShieldTile then
         self.shieldTile = ShieldTile:Create(self.frame)
         self.shieldTile:Hide()
+    end
+
+    -- Create Cooldown Tracker (v2.2)
+    self:CreateCooldownTracker()
+
+    -- Create Debuff Tracker (v2.2)
+    self:CreateDebuffTracker()
+
+    -- Create Proc Tracker (v2.2)
+    self:CreateProcTracker()
+end
+
+--- Create the cooldown tracker frame
+function TotemBar:CreateCooldownTracker()
+    if self.cooldownTrackerFrame then return end
+
+    if not CooldownTracker then
+        CooldownTracker = TotemBuddyLoader:ImportModule("CooldownTracker")
+    end
+
+    if CooldownTracker then
+        self.cooldownTrackerFrame = CooldownTracker:Create(UIParent)
+        if self.cooldownTrackerFrame then
+            self.cooldownTrackerFrame:Hide()  -- Hidden by default, shown by UpdateCooldownTrackerVisibility
+        end
+    end
+end
+
+--- Update cooldown tracker visibility
+function TotemBar:UpdateCooldownTrackerVisibility()
+    if not self.cooldownTrackerFrame then return end
+
+    local db = TotemBuddy.db.profile
+    if db.showCooldownTracker then
+        self.cooldownTrackerFrame:Show()
+        if CooldownTracker and CooldownTracker.Refresh then
+            CooldownTracker:Refresh()
+        end
+    else
+        self.cooldownTrackerFrame:Hide()
+    end
+end
+
+--- Create the debuff tracker frame
+function TotemBar:CreateDebuffTracker()
+    if self.debuffTrackerFrame then return end
+
+    if not DebuffTracker then
+        DebuffTracker = TotemBuddyLoader:ImportModule("DebuffTracker")
+    end
+
+    if DebuffTracker then
+        self.debuffTrackerFrame = DebuffTracker:Create(UIParent)
+        if self.debuffTrackerFrame then
+            self.debuffTrackerFrame:Hide()  -- Hidden by default
+        end
+    end
+end
+
+--- Update debuff tracker visibility
+function TotemBar:UpdateDebuffTrackerVisibility()
+    if not self.debuffTrackerFrame then return end
+
+    local db = TotemBuddy.db.profile
+    if db.showDebuffTracker then
+        self.debuffTrackerFrame:Show()
+        if DebuffTracker and DebuffTracker.Refresh then
+            DebuffTracker:Refresh()
+        end
+    else
+        self.debuffTrackerFrame:Hide()
+    end
+end
+
+--- Create the proc tracker frame
+function TotemBar:CreateProcTracker()
+    if self.procTrackerFrame then return end
+
+    if not ProcTracker then
+        ProcTracker = TotemBuddyLoader:ImportModule("ProcTracker")
+    end
+
+    if ProcTracker then
+        self.procTrackerFrame = ProcTracker:Create(UIParent)
+        if self.procTrackerFrame then
+            self.procTrackerFrame:Hide()
+        end
+    end
+end
+
+--- Update proc tracker visibility
+function TotemBar:UpdateProcTrackerVisibility()
+    if not self.procTrackerFrame then return end
+
+    local db = TotemBuddy.db.profile
+    if db.showProcTracker then
+        self.procTrackerFrame:Show()
+        if ProcTracker and ProcTracker.Refresh then
+            ProcTracker:Refresh()
+        end
+    else
+        self.procTrackerFrame:Hide()
+    end
+end
+
+--- Update proc tracker position relative to the main bar
+function TotemBar:UpdateProcTrackerPosition()
+    if not self.procTrackerFrame or not self.frame then return end
+    if not self.procTrackerFrame:IsShown() then return end
+
+    local db = TotemBuddy.db.profile
+    local position = db.procTrackerPosition or "left"
+    local spacing = 8
+
+    self.procTrackerFrame:ClearAllPoints()
+
+    if position == "above" then
+        self.procTrackerFrame:SetPoint("BOTTOM", self.frame, "TOP", 0, spacing)
+    elseif position == "below" then
+        self.procTrackerFrame:SetPoint("TOP", self.frame, "BOTTOM", 0, -spacing)
+    elseif position == "left" then
+        self.procTrackerFrame:SetPoint("RIGHT", self.frame, "LEFT", -spacing, 0)
+    elseif position == "right" then
+        self.procTrackerFrame:SetPoint("LEFT", self.frame, "RIGHT", spacing, 0)
     end
 end
 

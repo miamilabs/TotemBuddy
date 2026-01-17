@@ -191,6 +191,8 @@ L["Active"] = "Active"
 L["Not active"] = "Not active"
 L["charges"] = "charges"
 L["Active: %s remaining"] = "Active: %s remaining"
+L["Active: %s (%s remaining)"] = "Active: %s (%s remaining)"
+L["Warning: Enchant expiring soon!"] = "Warning: Enchant expiring soon!"
 L["Mainhand"] = "Mainhand"
 L["Offhand"] = "Offhand"
 L["Applies to: %s"] = "Applies to: %s"
@@ -199,6 +201,19 @@ L["Right-click to select shield"] = "Right-click to select shield"
 L["Click to set for %s"] = "Click to set for %s"
 L["Can be cast on friendly targets"] = "Can be cast on friendly targets"
 L["Casts on mouseover target or self"] = "Casts on mouseover target or self"
+
+-- Imbue Warning Options
+L["Imbue Warning Threshold"] = "Imbue Warning Threshold"
+L["Show Combat Glow"] = "Show Combat Glow"
+L["Seconds remaining before imbue is considered 'expiring soon' (triggers warning in combat)"] = "Seconds remaining before imbue is considered 'expiring soon' (triggers warning in combat)"
+L["Show a pulsing glow warning when weapon imbue is about to expire during combat"] = "Show a pulsing glow warning when weapon imbue is about to expire during combat"
+
+-- Imbue Types (for enchant identification)
+L["Flametongue"] = "Flametongue"
+L["Rockbiter"] = "Rockbiter"
+L["Frostbrand"] = "Frostbrand"
+L["Windfury"] = "Windfury"
+L["Earthliving"] = "Earthliving"
 
 -- Selector Tooltips
 L["Click to set as default"] = "Click to set as default"
@@ -211,6 +226,57 @@ L["Display buttons for weapon enchantments (Rockbiter, Flametongue, Windfury, et
 L["Display button for Lightning Shield, Water Shield, or Earth Shield"] = "Display button for Lightning Shield, Water Shield, or Earth Shield"
 L["Note: Features are disabled if no spells are known. Use 'Rescan Totems' after learning new spells."] = "Note: Features are disabled if no spells are known. Use 'Rescan Totems' after learning new spells."
 L["Rescan your spellbook for known totems, imbues, shields, and call spells"] = "Rescan your spellbook for known totems, imbues, shields, and call spells"
+
+-- Earth Shield Tracking
+L["Track Earth Shield on Targets"] = "Track Earth Shield on Targets"
+L["Track Earth Shield when cast on party or raid members, showing charges and duration on the shield tile"] = "Track Earth Shield when cast on party or raid members, showing charges and duration on the shield tile"
+L["Show Earth Shield Target Name"] = "Show Earth Shield Target Name"
+L["Display the name of the player who has your Earth Shield on the shield tile"] = "Display the name of the player who has your Earth Shield on the shield tile"
+
+-- Cooldown Tracker
+L["Cooldown Tracker"] = "Cooldown Tracker"
+L["Show Cooldown Tracker"] = "Show Cooldown Tracker"
+L["Display a tracker for important cooldowns like Reincarnation, Elemental Totems, and Bloodlust/Heroism"] = "Display a tracker for important cooldowns like Reincarnation, Elemental Totems, and Bloodlust/Heroism"
+L["Show Ready Glow"] = "Show Ready Glow"
+L["Display a glow effect when a tracked cooldown is ready to use"] = "Display a glow effect when a tracked cooldown is ready to use"
+L["Tracker Position"] = "Tracker Position"
+L["Where to display the cooldown tracker relative to the totem bar"] = "Where to display the cooldown tracker relative to the totem bar"
+L["Tracker Tile Size"] = "Tracker Tile Size"
+L["Size of individual cooldown tracker tiles"] = "Size of individual cooldown tracker tiles"
+L["Cooldown: %dm %ds"] = "Cooldown: %dm %ds"
+L["Cooldown: %ds"] = "Cooldown: %ds"
+L["Ready"] = "Ready"
+
+-- Target Debuff Tracker
+L["Target Debuff Tracker"] = "Target Debuff Tracker"
+L["Show Debuff Tracker"] = "Show Debuff Tracker"
+L["Display a tracker for your debuffs on the target (Flame Shock, Stormstrike, etc.)"] = "Display a tracker for your debuffs on the target (Flame Shock, Stormstrike, etc.)"
+L["Debuff Tracker Position"] = "Debuff Tracker Position"
+L["Where to display the debuff tracker relative to the totem bar"] = "Where to display the debuff tracker relative to the totem bar"
+L["Debuff Warning Threshold"] = "Debuff Warning Threshold"
+L["Seconds remaining before debuff is considered 'expiring soon' (triggers warning color)"] = "Seconds remaining before debuff is considered 'expiring soon' (triggers warning color)"
+L["Remaining: %dm %ds"] = "Remaining: %dm %ds"
+L["Remaining: %ds"] = "Remaining: %ds"
+
+-- Proc Tracker
+L["Proc Tracker"] = "Proc Tracker"
+L["Show Proc Tracker"] = "Show Proc Tracker"
+L["Display a tracker for proc effects (Clearcasting, Nature's Swiftness, etc.)"] = "Display a tracker for proc effects (Clearcasting, Nature's Swiftness, etc.)"
+L["Proc Tracker Position"] = "Proc Tracker Position"
+L["Where to display the proc tracker relative to the totem bar"] = "Where to display the proc tracker relative to the totem bar"
+L["Stacks: %d"] = "Stacks: %d"
+L["Remaining: %.1fs"] = "Remaining: %.1fs"
+
+-- Warning System
+L["Warning System"] = "Warning System"
+L["Enable Warnings"] = "Enable Warnings"
+L["Enable the warning system for expiring effects and missing buffs"] = "Enable the warning system for expiring effects and missing buffs"
+L["Enable Warning Sounds"] = "Enable Warning Sounds"
+L["Play sound alerts for warnings"] = "Play sound alerts for warnings"
+L["Warnings Only in Combat"] = "Warnings Only in Combat"
+L["Only trigger warnings while in combat"] = "Only trigger warnings while in combat"
+L["Warning Cooldown"] = "Warning Cooldown"
+L["Minimum seconds between repeated warnings for the same effect"] = "Minimum seconds between repeated warnings for the same effect"
 
 -- Make globally accessible with fallback metatable
 setmetatable(L, {

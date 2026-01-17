@@ -119,6 +119,8 @@ function OptionsDefaults:GetDefaults()
             defaultMainhandImbue = nil,   -- nil = use first available
             defaultOffhandImbue = nil,    -- nil = use first available
             showImbueStatus = true,       -- Show active/duration indicator
+            imbueWarningThreshold = 60,   -- Seconds before "expiring soon" warning (combat glow)
+            showImbueCombatGlow = true,   -- Show pulsing glow when imbue expiring in combat
             imbueModifierOverrides = {
                 mainhand = { default = nil, shift = nil, ctrl = nil, alt = nil },
                 offhand = { default = nil, shift = nil, ctrl = nil, alt = nil },
@@ -127,6 +129,8 @@ function OptionsDefaults:GetDefaults()
             -- Shield defaults
             defaultShield = nil,          -- nil = use first available (Lightning Shield)
             showShieldStatus = true,      -- Show active/charges indicator
+            trackEarthShieldOnTargets = true, -- Track Earth Shield cast on party/raid members
+            showEarthShieldTargetName = true, -- Show target name on shield tile when Earth Shield is on others
 
             -- Earth Shield Targeting (v2.2)
             -- Configure modifier-based targeting for Earth Shield
@@ -141,6 +145,44 @@ function OptionsDefaults:GetDefaults()
             -- Extra tiles layout
             extraTilesPosition = "after", -- "after" (after totem tiles) or "before"
             showExtraTilesSeparator = false, -- Show visual separator between totems and extras
+
+            -- ===========================================
+            -- COOLDOWN TRACKER (v2.2)
+            -- ===========================================
+            showCooldownTracker = true,       -- Show the long cooldown tracker
+            cooldownTrackerTileSize = 32,     -- Size of cooldown tracker tiles
+            cooldownTrackerSpacing = 3,       -- Space between tracker tiles
+            showCooldownReadyGlow = true,     -- Show glow when cooldown is ready
+            cooldownTrackerPosition = "below", -- "above", "below", "left", "right" relative to totem bar
+
+            -- ===========================================
+            -- TARGET DEBUFF TRACKER (v2.2)
+            -- ===========================================
+            showDebuffTracker = true,         -- Show the target debuff tracker
+            debuffTrackerTileSize = 28,       -- Size of debuff tracker tiles
+            debuffTrackerSpacing = 2,         -- Space between tracker tiles
+            debuffWarningThreshold = 3,       -- Seconds before debuff considered "expiring"
+            debuffTrackerPosition = "above",  -- "above", "below", "left", "right" relative to totem bar
+
+            -- ===========================================
+            -- PROC TRACKER (v2.2)
+            -- ===========================================
+            showProcTracker = true,           -- Show the proc tracker
+            procTrackerTileSize = 36,         -- Size of proc tracker tiles
+            procTrackerSpacing = 4,           -- Space between tracker tiles
+            procTrackerPosition = "left",     -- "above", "below", "left", "right" relative to totem bar
+
+            -- ===========================================
+            -- WARNING SYSTEM (v2.2)
+            -- ===========================================
+            warningsEnabled = true,           -- Enable warning system
+            warningSoundsEnabled = true,      -- Enable warning sounds
+            warningsOnlyInCombat = false,     -- Only show warnings during combat
+            warningCooldown = 5,              -- Cooldown between repeated warnings (seconds)
+            totemExpiringSound = "warning",   -- Sound for totem expiring
+            totemDestroyedSound = "alert",    -- Sound for totem destroyed
+            shieldExpiringSound = "tick",     -- Sound for shield expiring
+            imbueExpiringSound = "warning",   -- Sound for imbue expiring
         },
         char = {
             -- Character-specific settings (currently unused)

@@ -320,6 +320,39 @@ function GeneralTab:GetOptions()
                     return not TotemBuddy.HasAnyImbueSpells
                 end,
             },
+            showImbueCombatGlow = {
+                type = "toggle",
+                name = L["Show Combat Glow"],
+                desc = L["Show a pulsing glow warning when weapon imbue is about to expire during combat"],
+                order = 27.1,
+                get = function()
+                    return TotemBuddy.db.profile.showImbueCombatGlow
+                end,
+                set = function(_, value)
+                    TotemBuddy.db.profile.showImbueCombatGlow = value
+                end,
+                disabled = function()
+                    return not TotemBuddy.db.profile.showWeaponImbues
+                end,
+            },
+            imbueWarningThreshold = {
+                type = "range",
+                name = L["Imbue Warning Threshold"],
+                desc = L["Seconds remaining before imbue is considered 'expiring soon' (triggers warning in combat)"],
+                order = 27.2,
+                min = 30,
+                max = 300,
+                step = 10,
+                get = function()
+                    return TotemBuddy.db.profile.imbueWarningThreshold
+                end,
+                set = function(_, value)
+                    TotemBuddy.db.profile.imbueWarningThreshold = value
+                end,
+                disabled = function()
+                    return not TotemBuddy.db.profile.showWeaponImbues or not TotemBuddy.db.profile.showImbueCombatGlow
+                end,
+            },
             showShields = {
                 type = "toggle",
                 name = L["Show Shields"],
@@ -346,11 +379,354 @@ function GeneralTab:GetOptions()
                     return not TotemBuddy.HasAnyShieldSpells
                 end,
             },
+            trackEarthShieldOnTargets = {
+                type = "toggle",
+                name = L["Track Earth Shield on Targets"],
+                desc = L["Track Earth Shield when cast on party or raid members, showing charges and duration on the shield tile"],
+                order = 28.1,
+                get = function()
+                    return TotemBuddy.db.profile.trackEarthShieldOnTargets
+                end,
+                set = function(_, value)
+                    TotemBuddy.db.profile.trackEarthShieldOnTargets = value
+                    -- Refresh shield tile display
+                    local TotemBar = TotemBuddyLoader:ImportModule("TotemBar")
+                    if TotemBar and TotemBar.shieldTile and TotemBar.shieldTile.UpdateStatus then
+                        TotemBar.shieldTile:UpdateStatus()
+                    end
+                end,
+                disabled = function()
+                    return not TotemBuddy.db.profile.showShields
+                end,
+            },
+            showEarthShieldTargetName = {
+                type = "toggle",
+                name = L["Show Earth Shield Target Name"],
+                desc = L["Display the name of the player who has your Earth Shield on the shield tile"],
+                order = 28.2,
+                get = function()
+                    return TotemBuddy.db.profile.showEarthShieldTargetName
+                end,
+                set = function(_, value)
+                    TotemBuddy.db.profile.showEarthShieldTargetName = value
+                    -- Refresh shield tile display
+                    local TotemBar = TotemBuddyLoader:ImportModule("TotemBar")
+                    if TotemBar and TotemBar.shieldTile and TotemBar.shieldTile.UpdateStatus then
+                        TotemBar.shieldTile:UpdateStatus()
+                    end
+                end,
+                disabled = function()
+                    return not TotemBuddy.db.profile.showShields or not TotemBuddy.db.profile.trackEarthShieldOnTargets
+                end,
+            },
             extrasHint = {
                 type = "description",
                 name = "|cff888888" .. L["Note: Features are disabled if no spells are known. Use 'Rescan Totems' after learning new spells."] .. "|r",
                 order = 29,
                 fontSize = "medium",
+            },
+            -- ===========================================
+            -- COOLDOWN TRACKER
+            -- ===========================================
+            dividerCooldowns = {
+                type = "header",
+                name = L["Cooldown Tracker"],
+                order = 30,
+            },
+            showCooldownTracker = {
+                type = "toggle",
+                name = L["Show Cooldown Tracker"],
+                desc = L["Display a tracker for important cooldowns like Reincarnation, Elemental Totems, and Bloodlust/Heroism"],
+                order = 31,
+                width = "full",
+                get = function()
+                    return TotemBuddy.db.profile.showCooldownTracker
+                end,
+                set = function(_, value)
+                    TotemBuddy.db.profile.showCooldownTracker = value
+                    local TotemBar = TotemBuddyLoader:ImportModule("TotemBar")
+                    if TotemBar then
+                        if InCombatLockdown() then
+                            TotemBar.pendingExtrasUpdate = true
+                            TotemBuddy:Print(L["Changes will apply after combat."])
+                        else
+                            TotemBar:UpdateCooldownTrackerVisibility()
+                            TotemBar:UpdateLayout()
+                        end
+                    end
+                end,
+            },
+            showCooldownReadyGlow = {
+                type = "toggle",
+                name = L["Show Ready Glow"],
+                desc = L["Display a glow effect when a tracked cooldown is ready to use"],
+                order = 32,
+                get = function()
+                    return TotemBuddy.db.profile.showCooldownReadyGlow
+                end,
+                set = function(_, value)
+                    TotemBuddy.db.profile.showCooldownReadyGlow = value
+                end,
+                disabled = function()
+                    return not TotemBuddy.db.profile.showCooldownTracker
+                end,
+            },
+            cooldownTrackerPosition = {
+                type = "select",
+                name = L["Tracker Position"],
+                desc = L["Where to display the cooldown tracker relative to the totem bar"],
+                order = 33,
+                values = {
+                    above = L["Above"],
+                    below = L["Below"],
+                    left = L["Left"],
+                    right = L["Right"],
+                },
+                get = function()
+                    return TotemBuddy.db.profile.cooldownTrackerPosition
+                end,
+                set = function(_, value)
+                    TotemBuddy.db.profile.cooldownTrackerPosition = value
+                    local TotemBar = TotemBuddyLoader:ImportModule("TotemBar")
+                    if TotemBar then
+                        if not InCombatLockdown() then
+                            TotemBar:UpdateLayout()
+                        end
+                    end
+                end,
+                disabled = function()
+                    return not TotemBuddy.db.profile.showCooldownTracker
+                end,
+            },
+            cooldownTrackerTileSize = {
+                type = "range",
+                name = L["Tracker Tile Size"],
+                desc = L["Size of individual cooldown tracker tiles"],
+                order = 34,
+                min = 20,
+                max = 50,
+                step = 2,
+                get = function()
+                    return TotemBuddy.db.profile.cooldownTrackerTileSize
+                end,
+                set = function(_, value)
+                    TotemBuddy.db.profile.cooldownTrackerTileSize = value
+                    local CooldownTracker = TotemBuddyLoader:ImportModule("CooldownTracker")
+                    if CooldownTracker then
+                        CooldownTracker:UpdateTileSize(value)
+                    end
+                    local TotemBar = TotemBuddyLoader:ImportModule("TotemBar")
+                    if TotemBar and TotemBar.UpdateLayout then
+                        TotemBar:UpdateLayout()
+                    end
+                end,
+                disabled = function()
+                    return not TotemBuddy.db.profile.showCooldownTracker
+                end,
+            },
+            -- ===========================================
+            -- TARGET DEBUFF TRACKER
+            -- ===========================================
+            dividerDebuffs = {
+                type = "header",
+                name = L["Target Debuff Tracker"],
+                order = 35,
+            },
+            showDebuffTracker = {
+                type = "toggle",
+                name = L["Show Debuff Tracker"],
+                desc = L["Display a tracker for your debuffs on the target (Flame Shock, Stormstrike, etc.)"],
+                order = 36,
+                width = "full",
+                get = function()
+                    return TotemBuddy.db.profile.showDebuffTracker
+                end,
+                set = function(_, value)
+                    TotemBuddy.db.profile.showDebuffTracker = value
+                    local TotemBar = TotemBuddyLoader:ImportModule("TotemBar")
+                    if TotemBar then
+                        if InCombatLockdown() then
+                            TotemBar.pendingExtrasUpdate = true
+                            TotemBuddy:Print(L["Changes will apply after combat."])
+                        else
+                            TotemBar:UpdateDebuffTrackerVisibility()
+                            TotemBar:UpdateLayout()
+                        end
+                    end
+                end,
+            },
+            debuffTrackerPosition = {
+                type = "select",
+                name = L["Debuff Tracker Position"],
+                desc = L["Where to display the debuff tracker relative to the totem bar"],
+                order = 37,
+                values = {
+                    above = L["Above"],
+                    below = L["Below"],
+                    left = L["Left"],
+                    right = L["Right"],
+                },
+                get = function()
+                    return TotemBuddy.db.profile.debuffTrackerPosition
+                end,
+                set = function(_, value)
+                    TotemBuddy.db.profile.debuffTrackerPosition = value
+                    local TotemBar = TotemBuddyLoader:ImportModule("TotemBar")
+                    if TotemBar then
+                        if not InCombatLockdown() then
+                            TotemBar:UpdateLayout()
+                        end
+                    end
+                end,
+                disabled = function()
+                    return not TotemBuddy.db.profile.showDebuffTracker
+                end,
+            },
+            debuffWarningThreshold = {
+                type = "range",
+                name = L["Debuff Warning Threshold"],
+                desc = L["Seconds remaining before debuff is considered 'expiring soon' (triggers warning color)"],
+                order = 38,
+                min = 1,
+                max = 10,
+                step = 1,
+                get = function()
+                    return TotemBuddy.db.profile.debuffWarningThreshold
+                end,
+                set = function(_, value)
+                    TotemBuddy.db.profile.debuffWarningThreshold = value
+                end,
+                disabled = function()
+                    return not TotemBuddy.db.profile.showDebuffTracker
+                end,
+            },
+            -- ===========================================
+            -- PROC TRACKER
+            -- ===========================================
+            dividerProcs = {
+                type = "header",
+                name = L["Proc Tracker"],
+                order = 38.5,
+            },
+            showProcTracker = {
+                type = "toggle",
+                name = L["Show Proc Tracker"],
+                desc = L["Display a tracker for proc effects (Clearcasting, Nature's Swiftness, etc.)"],
+                order = 38.6,
+                width = "full",
+                get = function()
+                    return TotemBuddy.db.profile.showProcTracker
+                end,
+                set = function(_, value)
+                    TotemBuddy.db.profile.showProcTracker = value
+                    local TotemBar = TotemBuddyLoader:ImportModule("TotemBar")
+                    if TotemBar then
+                        if InCombatLockdown() then
+                            TotemBar.pendingExtrasUpdate = true
+                            TotemBuddy:Print(L["Changes will apply after combat."])
+                        else
+                            TotemBar:UpdateProcTrackerVisibility()
+                            TotemBar:UpdateLayout()
+                        end
+                    end
+                end,
+            },
+            procTrackerPosition = {
+                type = "select",
+                name = L["Proc Tracker Position"],
+                desc = L["Where to display the proc tracker relative to the totem bar"],
+                order = 38.7,
+                values = {
+                    above = L["Above"],
+                    below = L["Below"],
+                    left = L["Left"],
+                    right = L["Right"],
+                },
+                get = function()
+                    return TotemBuddy.db.profile.procTrackerPosition
+                end,
+                set = function(_, value)
+                    TotemBuddy.db.profile.procTrackerPosition = value
+                    local TotemBar = TotemBuddyLoader:ImportModule("TotemBar")
+                    if TotemBar then
+                        if not InCombatLockdown() then
+                            TotemBar:UpdateLayout()
+                        end
+                    end
+                end,
+                disabled = function()
+                    return not TotemBuddy.db.profile.showProcTracker
+                end,
+            },
+
+            -- ===========================================
+            -- WARNING SYSTEM
+            -- ===========================================
+            dividerWarnings = {
+                type = "header",
+                name = L["Warning System"],
+                order = 39,
+            },
+            warningsEnabled = {
+                type = "toggle",
+                name = L["Enable Warnings"],
+                desc = L["Enable the warning system for expiring effects and missing buffs"],
+                order = 39.1,
+                width = "full",
+                get = function()
+                    return TotemBuddy.db.profile.warningsEnabled
+                end,
+                set = function(_, value)
+                    TotemBuddy.db.profile.warningsEnabled = value
+                end,
+            },
+            warningSoundsEnabled = {
+                type = "toggle",
+                name = L["Enable Warning Sounds"],
+                desc = L["Play sound alerts for warnings"],
+                order = 39.2,
+                get = function()
+                    return TotemBuddy.db.profile.warningSoundsEnabled
+                end,
+                set = function(_, value)
+                    TotemBuddy.db.profile.warningSoundsEnabled = value
+                end,
+                disabled = function()
+                    return not TotemBuddy.db.profile.warningsEnabled
+                end,
+            },
+            warningsOnlyInCombat = {
+                type = "toggle",
+                name = L["Warnings Only in Combat"],
+                desc = L["Only trigger warnings while in combat"],
+                order = 39.3,
+                get = function()
+                    return TotemBuddy.db.profile.warningsOnlyInCombat
+                end,
+                set = function(_, value)
+                    TotemBuddy.db.profile.warningsOnlyInCombat = value
+                end,
+                disabled = function()
+                    return not TotemBuddy.db.profile.warningsEnabled
+                end,
+            },
+            warningCooldown = {
+                type = "range",
+                name = L["Warning Cooldown"],
+                desc = L["Minimum seconds between repeated warnings for the same effect"],
+                order = 39.4,
+                min = 1,
+                max = 30,
+                step = 1,
+                get = function()
+                    return TotemBuddy.db.profile.warningCooldown
+                end,
+                set = function(_, value)
+                    TotemBuddy.db.profile.warningCooldown = value
+                end,
+                disabled = function()
+                    return not TotemBuddy.db.profile.warningsEnabled
+                end,
             },
 
             -- ===========================================
@@ -359,13 +735,13 @@ function GeneralTab:GetOptions()
             divider2 = {
                 type = "header",
                 name = L["Actions"],
-                order = 30,
+                order = 40,
             },
             resetPosition = {
                 type = "execute",
                 name = L["Reset Position"],
                 desc = L["Reset the totem bar to the center of the screen"],
-                order = 31,
+                order = 41,
                 func = function()
                     TotemBuddy.db.profile.posX = 0
                     TotemBuddy.db.profile.posY = -200
@@ -380,7 +756,7 @@ function GeneralTab:GetOptions()
                 type = "execute",
                 name = L["Rescan Totems"],
                 desc = L["Rescan your spellbook for known totems, imbues, shields, and call spells"],
-                order = 32,
+                order = 42,
                 func = function()
                     -- Scan totems
                     local SpellScanner = TotemBuddyLoader:ImportModule("SpellScanner")

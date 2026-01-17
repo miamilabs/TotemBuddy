@@ -12,6 +12,7 @@ local L = TotemBuddy_L or setmetatable({}, { __index = function(_, k) return k e
 -- Module references
 local ShieldSelector = nil
 local ExtrasScanner = nil
+local EventHandler = nil
 
 -- Database reference
 local ShamanExtrasDB = nil
@@ -22,6 +23,39 @@ local function GetDB()
     end
     return ShamanExtrasDB
 end
+
+-- Earth Shield spell IDs (base spell ID used for tracking)
+local EARTH_SHIELD_SPELL_IDS = {
+    [974] = true,    -- Rank 1
+    [32593] = true,  -- Rank 2
+    [32594] = true,  -- Rank 3
+}
+
+-- Earth Shield constants (TBC Classic values)
+local EARTH_SHIELD_DEFAULT_CHARGES = 6
+local EARTH_SHIELD_DEFAULT_DURATION = 600  -- 10 minutes
+
+-- Get the localized name for Earth Shield (cache it)
+local EARTH_SHIELD_NAME = nil
+local function GetEarthShieldName()
+    if not EARTH_SHIELD_NAME then
+        EARTH_SHIELD_NAME = GetSpellInfo(974) or "Earth Shield"
+    end
+    return EARTH_SHIELD_NAME
+end
+
+-- =============================================================================
+-- EARTH SHIELD TRACKING STATE
+-- =============================================================================
+
+-- Earth Shield tracking data
+_ShieldTile.earthShieldTarget = nil  -- { guid = string, name = string, charges = number, endTime = number }
+_ShieldTile.cleuRegistered = false
+
+-- Pending Earth Shield cast tracking (for UNIT_SPELLCAST_SENT -> SUCCEEDED flow)
+_ShieldTile.lastESCastTarget = nil      -- Target name from UNIT_SPELLCAST_SENT
+_ShieldTile.lastESCastGUID = nil        -- Cast GUID to match with SUCCEEDED
+_ShieldTile.lastESCastUnitGUID = nil    -- Target's GUID (resolved at cast time)
 
 -- =============================================================================
 -- CREATION
@@ -78,6 +112,15 @@ function ShieldTile:Create(parent)
     tile.durationText:SetShadowOffset(1, -1)
     tile.durationText:Hide()
 
+    -- Target name text (for Earth Shield - shows who has it)
+    tile.targetNameText = tile:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    tile.targetNameText:SetPoint("TOP", 0, -2)
+    tile.targetNameText:SetTextColor(0.5, 1.0, 0.5, 1)  -- Light green
+    tile.targetNameText:SetShadowOffset(1, -1)
+    tile.targetNameText:SetJustifyH("CENTER")
+    tile.targetNameText:SetWidth(tile:GetWidth() - 4)
+    tile.targetNameText:Hide()
+
     -- Type indicator bar (bottom)
     tile.typeIndicator = tile:CreateTexture(nil, "OVERLAY")
     tile.typeIndicator:SetColorTexture(0.8, 0.8, 0.2, 0.8)  -- Yellow for Shield
@@ -128,6 +171,15 @@ function ShieldTile:Create(parent)
     tile.ApplyPendingAttributes = function(self)
         _ShieldTile.ApplyPendingAttributes(self)
     end
+    tile.OnGroupRosterUpdate = function(self)
+        _ShieldTile.OnGroupRosterUpdate(self)
+    end
+    tile.GetEarthShieldTarget = function(self)
+        return _ShieldTile.GetEarthShieldTarget()
+    end
+
+    -- Register for CLEU events (Earth Shield tracking)
+    _ShieldTile.RegisterCLEUHandlers()
 
     return tile
 end
@@ -262,6 +314,329 @@ function _ShieldTile.ApplyPendingAttributes(tile)
 end
 
 -- =============================================================================
+-- EARTH SHIELD CLEU TRACKING
+-- =============================================================================
+
+--- Register CLEU handlers for Earth Shield tracking
+function _ShieldTile.RegisterCLEUHandlers()
+    if _ShieldTile.cleuRegistered then return end
+
+    -- Get EventHandler module
+    if not EventHandler then
+        EventHandler = TotemBuddyLoader:ImportModule("EventHandler")
+    end
+
+    if not EventHandler then return end
+
+    -- Register for aura events
+    -- Note: Standard CLEU params - spellId is at position 12 in the vararg
+    EventHandler:RegisterCLEUHandler("ShieldTile", {
+        "SPELL_AURA_APPLIED",
+        "SPELL_AURA_REFRESH",
+        "SPELL_AURA_REMOVED",
+        "SPELL_AURA_APPLIED_DOSE",
+        "SPELL_AURA_REMOVED_DOSE",
+    }, function(timestamp, subevent, hideCaster, sourceGUID, sourceName, sourceFlags, sourceRaidFlags, destGUID, destName, destFlags, destRaidFlags, spellId, spellName, ...)
+        local playerGUID = EventHandler:GetPlayerGUID()
+        _ShieldTile.OnCLEUEvent(timestamp, subevent, sourceGUID, destGUID, destName, playerGUID, spellId, spellName)
+    end)
+
+    _ShieldTile.cleuRegistered = true
+end
+
+--- Handle CLEU events for Earth Shield
+---@param timestamp number
+---@param subevent string
+---@param sourceGUID string
+---@param destGUID string
+---@param destName string
+---@param playerGUID string
+---@param spellId number
+---@param spellName string
+function _ShieldTile.OnCLEUEvent(timestamp, subevent, sourceGUID, destGUID, destName, playerGUID, spellId, spellName)
+    -- Only track our own Earth Shield
+    if sourceGUID ~= playerGUID then return end
+
+    -- Check if this is Earth Shield
+    if not EARTH_SHIELD_SPELL_IDS[spellId] then return end
+
+    if subevent == "SPELL_AURA_APPLIED" or subevent == "SPELL_AURA_REFRESH" then
+        -- Earth Shield was applied/refreshed
+        _ShieldTile.earthShieldTarget = {
+            guid = destGUID,
+            name = destName,
+            charges = EARTH_SHIELD_DEFAULT_CHARGES,
+            endTime = GetTime() + EARTH_SHIELD_DEFAULT_DURATION,
+        }
+
+        -- Scan the target to get accurate charge count
+        _ShieldTile.ScanTargetForEarthShield(destGUID, destName)
+
+    elseif subevent == "SPELL_AURA_REMOVED" then
+        -- Earth Shield was removed
+        if _ShieldTile.earthShieldTarget and _ShieldTile.earthShieldTarget.guid == destGUID then
+            _ShieldTile.earthShieldTarget = nil
+        end
+
+    elseif subevent == "SPELL_AURA_APPLIED_DOSE" or subevent == "SPELL_AURA_REMOVED_DOSE" then
+        -- Charge count changed (Earth Shield heal triggered)
+        if _ShieldTile.earthShieldTarget and _ShieldTile.earthShieldTarget.guid == destGUID then
+            -- Scan to get updated charge count
+            _ShieldTile.ScanTargetForEarthShield(destGUID, destName)
+        end
+    end
+
+    -- Update display
+    local TotemBar = TotemBuddyLoader:ImportModule("TotemBar")
+    if TotemBar and TotemBar.shieldTile and TotemBar.shieldTile.UpdateStatus then
+        TotemBar.shieldTile:UpdateStatus()
+    end
+end
+
+-- =============================================================================
+-- EARTH SHIELD SPELLCAST TRACKING (Primary method - more reliable than CLEU)
+-- =============================================================================
+
+--- Handle UNIT_SPELLCAST_SENT - captures target at cast time
+---@param target string The target name or unit
+---@param castGUID string The cast GUID
+---@param spellID number The spell ID
+function _ShieldTile.OnSpellcastSent(target, castGUID, spellID)
+    -- Only track Earth Shield spells
+    if not EARTH_SHIELD_SPELL_IDS[spellID] then return end
+
+    -- Store pending cast info
+    _ShieldTile.lastESCastTarget = target
+    _ShieldTile.lastESCastGUID = castGUID
+
+    -- Try to resolve the target's GUID
+    -- First try direct unit lookup (works if target is a unit token like "target", "focus")
+    _ShieldTile.lastESCastUnitGUID = UnitGUID(target)
+
+    -- Fallback: if target is a name string, check common unit tokens
+    if not _ShieldTile.lastESCastUnitGUID then
+        if target == UnitName("target") then
+            _ShieldTile.lastESCastUnitGUID = UnitGUID("target")
+        elseif target == UnitName("focus") then
+            _ShieldTile.lastESCastUnitGUID = UnitGUID("focus")
+        elseif target == UnitName("player") then
+            _ShieldTile.lastESCastUnitGUID = UnitGUID("player")
+        else
+            -- Check party/raid members
+            if IsInRaid() then
+                for i = 1, 40 do
+                    local unit = "raid" .. i
+                    if UnitExists(unit) and target == UnitName(unit) then
+                        _ShieldTile.lastESCastUnitGUID = UnitGUID(unit)
+                        break
+                    end
+                end
+            elseif IsInGroup() then
+                for i = 1, 4 do
+                    local unit = "party" .. i
+                    if UnitExists(unit) and target == UnitName(unit) then
+                        _ShieldTile.lastESCastUnitGUID = UnitGUID(unit)
+                        break
+                    end
+                end
+            end
+        end
+    end
+end
+
+--- Handle UNIT_SPELLCAST_SUCCEEDED - confirms cast and stores target
+---@param castGUID string The cast GUID
+function _ShieldTile.OnSpellcastSucceeded(castGUID)
+    -- Only process if this matches our pending Earth Shield cast
+    if not _ShieldTile.lastESCastGUID or castGUID ~= _ShieldTile.lastESCastGUID then
+        return
+    end
+
+    -- Confirmed! Store the Earth Shield target
+    _ShieldTile.earthShieldTarget = {
+        guid = _ShieldTile.lastESCastUnitGUID,
+        name = _ShieldTile.lastESCastTarget,
+        charges = EARTH_SHIELD_DEFAULT_CHARGES,
+        endTime = GetTime() + EARTH_SHIELD_DEFAULT_DURATION,
+    }
+
+    -- Clear pending cast state
+    _ShieldTile.lastESCastTarget = nil
+    _ShieldTile.lastESCastGUID = nil
+    _ShieldTile.lastESCastUnitGUID = nil
+
+    -- Try to get accurate charges if we have a valid GUID
+    if _ShieldTile.earthShieldTarget.guid then
+        _ShieldTile.ScanTargetForEarthShield(
+            _ShieldTile.earthShieldTarget.guid,
+            _ShieldTile.earthShieldTarget.name
+        )
+    end
+
+    -- Update display
+    local TotemBar = TotemBuddyLoader:ImportModule("TotemBar")
+    if TotemBar and TotemBar.shieldTile and TotemBar.shieldTile.UpdateStatus then
+        TotemBar.shieldTile:UpdateStatus()
+    end
+end
+
+--- Handle UNIT_AURA for Earth Shield target - updates charges and duration
+---@param unit string The unit that had an aura change
+function _ShieldTile.OnTargetAuraChanged(unit)
+    -- Only process if we have a tracked Earth Shield target
+    if not _ShieldTile.earthShieldTarget or not _ShieldTile.earthShieldTarget.guid then
+        return
+    end
+
+    -- Check if this unit matches our Earth Shield target
+    if UnitGUID(unit) ~= _ShieldTile.earthShieldTarget.guid then
+        return
+    end
+
+    -- Scan the unit for Earth Shield buff info
+    local earthShieldName = GetEarthShieldName()
+    local found = false
+
+    for i = 1, 40 do
+        local name, _, count, _, duration, expirationTime, source, _, _, spellId = UnitBuff(unit, i)
+        if not name then break end
+
+        if EARTH_SHIELD_SPELL_IDS[spellId] and source == "player" then
+            -- Update tracking data with accurate values
+            _ShieldTile.earthShieldTarget.charges = count or 0
+            _ShieldTile.earthShieldTarget.endTime = expirationTime or (GetTime() + 600)
+            found = true
+            break
+        end
+    end
+
+    -- If Earth Shield is no longer on the target, clear tracking
+    if not found then
+        _ShieldTile.earthShieldTarget = nil
+    end
+
+    -- Update display
+    local TotemBar = TotemBuddyLoader:ImportModule("TotemBar")
+    if TotemBar and TotemBar.shieldTile and TotemBar.shieldTile.UpdateStatus then
+        TotemBar.shieldTile:UpdateStatus()
+    end
+end
+
+--- Scan a specific target for Earth Shield charges
+---@param targetGUID string
+---@param targetName string
+function _ShieldTile.ScanTargetForEarthShield(targetGUID, targetName)
+    local earthShieldName = GetEarthShieldName()
+    local playerGUID = UnitGUID("player")
+
+    -- Build list of units to check
+    local unitsToCheck = { "target", "focus", "player" }
+
+    -- Add party/raid members
+    if IsInRaid() then
+        for i = 1, 40 do
+            table.insert(unitsToCheck, "raid" .. i)
+        end
+    elseif IsInGroup() then
+        for i = 1, 4 do
+            table.insert(unitsToCheck, "party" .. i)
+        end
+    end
+
+    -- Scan each unit
+    for _, unit in ipairs(unitsToCheck) do
+        if UnitExists(unit) and UnitGUID(unit) == targetGUID then
+            for i = 1, 40 do
+                local name, _, count, _, duration, expirationTime, source, _, _, spellId = UnitBuff(unit, i)
+                if not name then break end
+
+                if EARTH_SHIELD_SPELL_IDS[spellId] and source == "player" then
+                    _ShieldTile.earthShieldTarget = {
+                        guid = targetGUID,
+                        name = targetName or UnitName(unit),
+                        charges = count or 0,
+                        endTime = expirationTime or (GetTime() + 600),
+                    }
+                    return
+                end
+            end
+            break
+        end
+    end
+end
+
+--- Scan all units for Earth Shield (called on login/reload)
+function _ShieldTile.ScanAllUnitsForEarthShield()
+    local earthShieldName = GetEarthShieldName()
+
+    -- Build list of units to check
+    local unitsToCheck = { "target", "focus", "player" }
+
+    -- Add party/raid members
+    if IsInRaid() then
+        for i = 1, 40 do
+            table.insert(unitsToCheck, "raid" .. i)
+        end
+    elseif IsInGroup() then
+        for i = 1, 4 do
+            table.insert(unitsToCheck, "party" .. i)
+        end
+    end
+
+    -- Scan each unit
+    for _, unit in ipairs(unitsToCheck) do
+        if UnitExists(unit) then
+            for i = 1, 40 do
+                local name, _, count, _, duration, expirationTime, source, _, _, spellId = UnitBuff(unit, i)
+                if not name then break end
+
+                if EARTH_SHIELD_SPELL_IDS[spellId] and source == "player" then
+                    _ShieldTile.earthShieldTarget = {
+                        guid = UnitGUID(unit),
+                        name = UnitName(unit),
+                        charges = count or 0,
+                        endTime = expirationTime or (GetTime() + 600),
+                    }
+                    return
+                end
+            end
+        end
+    end
+
+    -- No Earth Shield found
+    _ShieldTile.earthShieldTarget = nil
+end
+
+--- Get the current Earth Shield target info
+---@return table|nil earthShieldTarget The target info or nil
+function _ShieldTile.GetEarthShieldTarget()
+    -- Validate that the target still has the shield
+    if _ShieldTile.earthShieldTarget then
+        local now = GetTime()
+        if _ShieldTile.earthShieldTarget.endTime and _ShieldTile.earthShieldTarget.endTime < now then
+            -- Expired
+            _ShieldTile.earthShieldTarget = nil
+        end
+    end
+    return _ShieldTile.earthShieldTarget
+end
+
+--- Called when group roster changes
+---@param tile Button The tile button (optional)
+function _ShieldTile.OnGroupRosterUpdate(tile)
+    -- Re-scan for Earth Shield when roster changes
+    -- (target might have left group)
+    C_Timer.After(0.5, function()
+        _ShieldTile.ScanAllUnitsForEarthShield()
+
+        local TotemBar = TotemBuddyLoader:ImportModule("TotemBar")
+        if TotemBar and TotemBar.shieldTile and TotemBar.shieldTile.UpdateStatus then
+            TotemBar.shieldTile:UpdateStatus()
+        end
+    end)
+end
+
+-- =============================================================================
 -- STATUS DISPLAY
 -- =============================================================================
 
@@ -297,16 +672,76 @@ function _ShieldTile.UpdateStatus(tile)
         tile.activeGlow:Hide()
         tile.chargesText:Hide()
         tile.durationText:Hide()
+        if tile.targetNameText then tile.targetNameText:Hide() end
         tile.icon:SetDesaturated(false)
         return
     end
 
+    -- Check for Earth Shield on party members first (higher priority display)
+    local earthShieldTarget = _ShieldTile.GetEarthShieldTarget()
+    local showEarthShieldTracking = TotemBuddy.db.profile.trackEarthShieldOnTargets
+    if showEarthShieldTracking == nil then showEarthShieldTracking = true end  -- Default to true
+
+    if earthShieldTarget and showEarthShieldTracking then
+        -- Earth Shield is active on a target
+        if TotemBuddy.db.profile.showActiveGlow then
+            tile.activeGlow:Show()
+            -- Use a green tint for Earth Shield on others
+            tile.activeGlow:SetVertexColor(0.3, 1.0, 0.5, 0.6)
+        end
+
+        -- Show charges
+        if earthShieldTarget.charges and earthShieldTarget.charges > 0 then
+            tile.chargesText:SetText(tostring(earthShieldTarget.charges))
+            tile.chargesText:Show()
+        else
+            tile.chargesText:Hide()
+        end
+
+        -- Show remaining duration
+        local remaining = earthShieldTarget.endTime and (earthShieldTarget.endTime - GetTime()) or 0
+        if remaining > 0 and TotemBuddy.db.profile.showDurationText then
+            tile.durationText:SetText(FormatTime(remaining))
+            tile.durationText:Show()
+        else
+            tile.durationText:Hide()
+        end
+
+        -- Show target name
+        local showTargetName = TotemBuddy.db.profile.showEarthShieldTargetName
+        if showTargetName == nil then showTargetName = true end  -- Default to true
+
+        if showTargetName and tile.targetNameText and earthShieldTarget.name then
+            -- Truncate name if too long
+            local name = earthShieldTarget.name
+            if #name > 8 then
+                name = string.sub(name, 1, 7) .. "..."
+            end
+            tile.targetNameText:SetText(name)
+            tile.targetNameText:Show()
+        elseif tile.targetNameText then
+            tile.targetNameText:Hide()
+        end
+
+        -- Normal icon
+        tile.icon:SetDesaturated(false)
+        return
+    end
+
+    -- Hide target name if no Earth Shield on targets
+    if tile.targetNameText then
+        tile.targetNameText:Hide()
+    end
+
+    -- Check for self-shields (Lightning Shield, Water Shield, or Earth Shield on self)
     local isActive, buffName, charges, remaining, activeSpellId = GetActiveShieldInfo()
 
     if isActive then
-        -- Shield is active
+        -- Shield is active on player
         if TotemBuddy.db.profile.showActiveGlow then
             tile.activeGlow:Show()
+            -- Reset to yellow for self-shields
+            tile.activeGlow:SetVertexColor(1.0, 1.0, 0.3, 0.6)
         end
 
         -- Show charges if available
