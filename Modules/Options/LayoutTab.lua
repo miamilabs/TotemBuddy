@@ -5,24 +5,25 @@
 
 ---@class LayoutTab
 local LayoutTab = TotemBuddyLoader:CreateModule("LayoutTab")
+local L = TotemBuddy_L or setmetatable({}, { __index = function(_, k) return k end })
 
 --- Get the options table for this tab
 ---@return table options The AceConfig options table
 function LayoutTab:GetOptions()
     return {
         type = "group",
-        name = "Layout",
+        name = L["Layout"],
         order = 2,
         args = {
             layout = {
                 type = "select",
-                name = "Bar Layout",
-                desc = "Choose how totem tiles are arranged",
+                name = L["Bar Layout"],
+                desc = L["Choose how totem tiles are arranged"],
                 order = 1,
                 values = {
-                    horizontal = "Horizontal",
-                    vertical = "Vertical",
-                    grid2x2 = "2x2 Grid",
+                    horizontal = L["Horizontal"],
+                    vertical = L["Vertical"],
+                    grid2x2 = L["2x2 Grid"],
                 },
                 get = function()
                     return TotemBuddy.db.profile.layout
@@ -37,13 +38,13 @@ function LayoutTab:GetOptions()
             },
             divider1 = {
                 type = "header",
-                name = "Size",
+                name = L["Size"],
                 order = 10,
             },
             scale = {
                 type = "range",
-                name = "Scale",
-                desc = "Overall scale of the totem bar",
+                name = L["Scale"],
+                desc = L["Overall scale of the totem bar"],
                 order = 11,
                 min = 0.5,
                 max = 2.0,
@@ -62,8 +63,8 @@ function LayoutTab:GetOptions()
             },
             tileSize = {
                 type = "range",
-                name = "Tile Size",
-                desc = "Size of individual totem tiles",
+                name = L["Tile Size"],
+                desc = L["Size of individual totem tiles"],
                 order = 12,
                 min = 24,
                 max = 64,
@@ -81,8 +82,8 @@ function LayoutTab:GetOptions()
             },
             tileSpacing = {
                 type = "range",
-                name = "Tile Spacing",
-                desc = "Space between totem tiles",
+                name = L["Tile Spacing"],
+                desc = L["Space between totem tiles"],
                 order = 13,
                 min = 0,
                 max = 16,
@@ -100,13 +101,13 @@ function LayoutTab:GetOptions()
             },
             divider2 = {
                 type = "header",
-                name = "Appearance",
+                name = L["Appearance"],
                 order = 20,
             },
             showBorder = {
                 type = "toggle",
-                name = "Show Border",
-                desc = "Show a border around the totem bar",
+                name = L["Show Border"],
+                desc = L["Show a border around the totem bar"],
                 order = 21,
                 get = function()
                     return TotemBuddy.db.profile.showBorder
@@ -121,8 +122,8 @@ function LayoutTab:GetOptions()
             },
             backgroundColor = {
                 type = "color",
-                name = "Background Color",
-                desc = "Background color of the totem bar",
+                name = L["Background Color"],
+                desc = L["Background color of the totem bar"],
                 order = 22,
                 hasAlpha = true,
                 get = function()
@@ -139,19 +140,19 @@ function LayoutTab:GetOptions()
             },
             divider3 = {
                 type = "header",
-                name = "Selector Popup",
+                name = L["Selector Popup"],
                 order = 30,
             },
             selectorPosition = {
                 type = "select",
-                name = "Selector Position",
-                desc = "Where the totem selection popup appears",
+                name = L["Selector Position"],
+                desc = L["Where the totem selection popup appears"],
                 order = 31,
                 values = {
-                    above = "Above",
-                    below = "Below",
-                    left = "Left",
-                    right = "Right",
+                    above = L["Above"],
+                    below = L["Below"],
+                    left = L["Left"],
+                    right = L["Right"],
                 },
                 get = function()
                     return TotemBuddy.db.profile.selectorPosition
@@ -162,8 +163,8 @@ function LayoutTab:GetOptions()
             },
             selectorColumns = {
                 type = "range",
-                name = "Selector Columns",
-                desc = "Number of columns in the totem selector popup",
+                name = L["Selector Columns"],
+                desc = L["Number of columns in the totem selector popup"],
                 order = 32,
                 min = 2,
                 max = 6,
@@ -177,8 +178,8 @@ function LayoutTab:GetOptions()
             },
             selectorScale = {
                 type = "range",
-                name = "Selector Scale",
-                desc = "Scale of the totem selector popup",
+                name = L["Selector Scale"],
+                desc = L["Scale of the totem selector popup"],
                 order = 33,
                 min = 0.5,
                 max = 2.0,

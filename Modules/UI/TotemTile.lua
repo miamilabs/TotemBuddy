@@ -6,6 +6,7 @@
 ---@class TotemTile
 local TotemTile = TotemBuddyLoader:CreateModule("TotemTile")
 local _TotemTile = TotemTile.private
+local L = TotemBuddy_L or setmetatable({}, { __index = function(_, k) return k end })
 
 -- Module references
 local TotemSelector = nil
@@ -331,7 +332,7 @@ function _TotemTile.ApplyPendingAttributes(tile)
 
         -- Show confirmation
         local spellName = GetSpellInfo(spellId) or totemData.name
-        TotemBuddy:Print(spellName .. " is now your default.")
+        TotemBuddy:Print(string.format(L["%s is now your default."], spellName))
         return
     end
 
@@ -431,7 +432,7 @@ function _TotemTile.OnRightClick(tile)
             TotemSelector:Show(tile)
         end
     elseif inCombat then
-        TotemBuddy:Print("Cannot open selector during combat.")
+        TotemBuddy:Print(L["Cannot open selector during combat."])
     end
 end
 

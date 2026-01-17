@@ -6,6 +6,7 @@
 ---@class TotemSelector
 local TotemSelector = TotemBuddyLoader:CreateModule("TotemSelector")
 local _TotemSelector = TotemSelector.private
+local L = TotemBuddy_L or setmetatable({}, { __index = function(_, k) return k end })
 
 -- Module references
 local TotemData = nil
@@ -398,7 +399,7 @@ function _TotemSelector.OnButtonClick(btn)
 
         -- Show feedback message
         local spellName = GetSpellInfo(spellId) or totemData.name
-        TotemBuddy:Print(spellName .. " will be set as default when leaving combat.")
+        TotemBuddy:Print(string.format(L["%s will be set as default when leaving combat."], spellName))
 
         -- Hide selector
         TotemSelector:Hide()
@@ -418,7 +419,7 @@ function _TotemSelector.OnButtonClick(btn)
         if spellName and not InCombatLockdown() then
             local ok, err = pcall(CastSpellByName, spellName)
             if not ok then
-                TotemBuddy:Print("Failed to cast " .. spellName .. ": " .. tostring(err))
+                TotemBuddy:Print(string.format(L["Failed to cast %s: %s"], spellName, tostring(err)))
             end
         end
     end
@@ -449,7 +450,7 @@ function _TotemSelector.OnButtonEnter(btn)
             local remaining = (start + duration) - GetTime()
             if remaining > 0 then
                 GameTooltip:AddLine(" ")
-                GameTooltip:AddLine("Cooldown: " .. FormatTime(remaining), 1, 0.5, 0.5)
+                GameTooltip:AddLine(string.format(L["Cooldown: %s"], FormatTime(remaining)), 1, 0.5, 0.5)
             end
         end
 
@@ -457,27 +458,27 @@ function _TotemSelector.OnButtonEnter(btn)
 
         -- Different hint text based on combat state
         if InCombatLockdown() then
-            GameTooltip:AddLine("Click to queue as default (after combat)", 1, 0.8, 0)
+            GameTooltip:AddLine(L["Click to queue as default (after combat)"], 1, 0.8, 0)
         else
             local castOnSelect = TotemBuddy.db.profile.castOnSelect
             if castOnSelect then
-                GameTooltip:AddLine("Click to set as default and cast", 0.7, 0.7, 0.7)
+                GameTooltip:AddLine(L["Click to set as default and cast"], 0.7, 0.7, 0.7)
             else
-                GameTooltip:AddLine("Click to set as default", 0.7, 0.7, 0.7)
+                GameTooltip:AddLine(L["Click to set as default"], 0.7, 0.7, 0.7)
             end
         end
     else
         -- Show basic info for unavailable totems
         GameTooltip:AddLine(btn.totemData.name, 1, 1, 1)
         GameTooltip:AddLine(" ")
-        GameTooltip:AddLine("Not yet learned", 1, 0.3, 0.3)
+        GameTooltip:AddLine(L["Not yet learned"], 1, 0.3, 0.3)
 
         if btn.totemData.levelRequired then
             local playerLevel = UnitLevel("player")
             if playerLevel < btn.totemData.levelRequired then
-                GameTooltip:AddLine("Requires level " .. btn.totemData.levelRequired, 0.7, 0.7, 0.7)
+                GameTooltip:AddLine(string.format(L["Requires level %d"], btn.totemData.levelRequired), 0.7, 0.7, 0.7)
             else
-                GameTooltip:AddLine("Visit a trainer to learn", 0.7, 0.7, 0.7)
+                GameTooltip:AddLine(L["Visit a trainer to learn"], 0.7, 0.7, 0.7)
             end
         end
     end

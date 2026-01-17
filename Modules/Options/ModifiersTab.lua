@@ -11,73 +11,74 @@
 
 ---@class ModifiersTab
 local ModifiersTab = TotemBuddyLoader:CreateModule("ModifiersTab")
+local L = TotemBuddy_L or setmetatable({}, { __index = function(_, k) return k end })
 
 -- Module references
 local TotemData = nil
 local SpellScanner = nil
 local TotemBar = nil
 
--- Element names for display
-local ElementNames = {"Fire", "Earth", "Water", "Air"}
+-- Element names for display (localized)
+local ElementNames = {L["Fire"], L["Earth"], L["Water"], L["Air"]}
 
 --- Get the options table for this tab
 ---@return table options The AceConfig options table
 function ModifiersTab:GetOptions()
     return {
         type = "group",
-        name = "Modifiers",
+        name = L["Modifiers"],
         order = 4,
         args = {
             description = {
                 type = "description",
-                name = "Configure modifier key overrides for each element. When holding Shift, Ctrl, or Alt while clicking a totem tile, it will cast the configured override totem instead of the default.\n\nThis uses secure macros built when out of combat, so modifiers work during combat.",
+                name = L["Configure modifier key overrides for each element. When holding Shift, Ctrl, or Alt while clicking a totem tile, it will cast the configured override totem instead of the default.\n\nThis uses secure macros built when out of combat, so modifiers work during combat."],
                 order = 1,
                 fontSize = "medium",
             },
             dividerFire = {
                 type = "header",
-                name = "|cFFFF6600Fire Totems|r",
+                name = "|cFFFF6600" .. L["Fire Totems"] .. "|r",
                 order = 10,
             },
-            fireShift = self:CreateModifierDropdown(1, "shift", "Shift", 11),
-            fireCtrl = self:CreateModifierDropdown(1, "ctrl", "Ctrl", 12),
-            fireAlt = self:CreateModifierDropdown(1, "alt", "Alt", 13),
+            fireShift = self:CreateModifierDropdown(1, "shift", L["Shift"], 11),
+            fireCtrl = self:CreateModifierDropdown(1, "ctrl", L["Ctrl"], 12),
+            fireAlt = self:CreateModifierDropdown(1, "alt", L["Alt"], 13),
             dividerEarth = {
                 type = "header",
-                name = "|cFF996633Earth Totems|r",
+                name = "|cFF996633" .. L["Earth Totems"] .. "|r",
                 order = 20,
             },
-            earthShift = self:CreateModifierDropdown(2, "shift", "Shift", 21),
-            earthCtrl = self:CreateModifierDropdown(2, "ctrl", "Ctrl", 22),
-            earthAlt = self:CreateModifierDropdown(2, "alt", "Alt", 23),
+            earthShift = self:CreateModifierDropdown(2, "shift", L["Shift"], 21),
+            earthCtrl = self:CreateModifierDropdown(2, "ctrl", L["Ctrl"], 22),
+            earthAlt = self:CreateModifierDropdown(2, "alt", L["Alt"], 23),
             dividerWater = {
                 type = "header",
-                name = "|cFF3399FFWater Totems|r",
+                name = "|cFF3399FF" .. L["Water Totems"] .. "|r",
                 order = 30,
             },
-            waterShift = self:CreateModifierDropdown(3, "shift", "Shift", 31),
-            waterCtrl = self:CreateModifierDropdown(3, "ctrl", "Ctrl", 32),
-            waterAlt = self:CreateModifierDropdown(3, "alt", "Alt", 33),
+            waterShift = self:CreateModifierDropdown(3, "shift", L["Shift"], 31),
+            waterCtrl = self:CreateModifierDropdown(3, "ctrl", L["Ctrl"], 32),
+            waterAlt = self:CreateModifierDropdown(3, "alt", L["Alt"], 33),
             dividerAir = {
                 type = "header",
-                name = "|cFFB8B8E6Air Totems|r",
+                name = "|cFFB8B8E6" .. L["Air Totems"] .. "|r",
                 order = 40,
             },
-            airShift = self:CreateModifierDropdown(4, "shift", "Shift", 41),
-            airCtrl = self:CreateModifierDropdown(4, "ctrl", "Ctrl", 42),
-            airAlt = self:CreateModifierDropdown(4, "alt", "Alt", 43),
+            airShift = self:CreateModifierDropdown(4, "shift", L["Shift"], 41),
+            airCtrl = self:CreateModifierDropdown(4, "ctrl", L["Ctrl"], 42),
+            airAlt = self:CreateModifierDropdown(4, "alt", L["Alt"], 43),
             dividerActions = {
                 type = "header",
-                name = "Actions",
+                name = L["Actions"],
                 order = 50,
             },
             clearAll = {
                 type = "execute",
-                name = "Clear All Modifiers",
-                desc = "Remove all modifier override assignments",
+                name = L["Clear All Modifiers"],
+                desc = L["Remove all modifier override assignments"],
                 order = 51,
                 confirm = true,
-                confirmText = "Clear all modifier overrides?",
+                confirmText = L["Clear all modifier overrides?"],
                 func = function()
                     for element = 1, 4 do
                         TotemBuddy.db.profile.modifierOverrides[element] = {
@@ -89,10 +90,10 @@ function ModifiersTab:GetOptions()
                     end
                     -- Batch combat check to avoid 4 separate error messages
                     if InCombatLockdown() then
-                        TotemBuddy:Print("Modifier overrides cleared. Macro updates will apply after combat ends.")
+                        TotemBuddy:Print(L["Modifier overrides cleared. Macro updates will apply after combat ends."])
                     else
                         self:RebuildAllMacros()
-                        TotemBuddy:Print("All modifier overrides cleared.")
+                        TotemBuddy:Print(L["All modifier overrides cleared."])
                     end
                 end,
             },
@@ -111,8 +112,8 @@ function ModifiersTab:CreateModifierDropdown(element, modifier, modifierName, or
 
     return {
         type = "select",
-        name = modifierName .. "+Click",
-        desc = "Totem to cast when " .. modifierName .. "+clicking the " .. elementName:lower() .. " tile",
+        name = modifierName .. L["+Click"],
+        desc = string.format(L["Totem to cast when %s+clicking the %s tile"], modifierName, elementName:lower()),
         order = order,
         values = function()
             -- Get modules
@@ -124,7 +125,7 @@ function ModifiersTab:CreateModifierDropdown(element, modifier, modifierName, or
             end
 
             local values = {}
-            values["__none__"] = "None (disabled)"
+            values["__none__"] = L["None (disabled)"]
 
             if TotemData and SpellScanner then
                 local totems = TotemData:GetTotemsForElement(element)
@@ -206,7 +207,7 @@ end
 ---@param element number The element index (1-4)
 function ModifiersTab:RebuildMacroForElement(element)
     if InCombatLockdown() then
-        TotemBuddy:Print("Cannot update macros in combat. Changes will apply after combat ends.")
+        TotemBuddy:Print(L["Cannot update macros in combat. Changes will apply after combat ends."])
         return
     end
 

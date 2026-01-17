@@ -5,6 +5,7 @@
 
 ---@class OptionsMain
 local OptionsMain = TotemBuddyLoader:CreateModule("OptionsMain")
+local L = TotemBuddy_L or setmetatable({}, { __index = function(_, k) return k end })
 
 -- Module references
 local GeneralTab = nil
@@ -67,7 +68,7 @@ function OptionsMain:Open()
         InterfaceOptionsFrame_OpenToCategory(self.optionsFrame)
         InterfaceOptionsFrame_OpenToCategory(self.optionsFrame)  -- Call twice due to Blizzard bug
     else
-        TotemBuddy:Print("Options panel not available in this client.")
+        TotemBuddy:Print(L["Options panel not available in this client."])
     end
 end
 

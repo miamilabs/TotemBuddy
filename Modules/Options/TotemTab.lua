@@ -5,6 +5,7 @@
 
 ---@class TotemTab
 local TotemTab = TotemBuddyLoader:CreateModule("TotemTab")
+local L = TotemBuddy_L or setmetatable({}, { __index = function(_, k) return k end })
 
 -- Module references
 local TotemData = nil
@@ -15,13 +16,13 @@ local SpellScanner = nil
 function TotemTab:GetOptions()
     return {
         type = "group",
-        name = "Totems",
+        name = L["Totems"],
         order = 3,
         args = {
             useHighestRank = {
                 type = "toggle",
-                name = "Use Highest Rank",
-                desc = "Always cast the highest rank of each totem you know. When disabled, you can choose specific ranks.",
+                name = L["Use Highest Rank"],
+                desc = L["Always cast the highest rank of each totem you know. When disabled, you can choose specific ranks."],
                 order = 1,
                 width = "full",
                 get = function()
@@ -37,14 +38,14 @@ function TotemTab:GetOptions()
             },
             rankNote = {
                 type = "description",
-                name = "When 'Use Highest Rank' is disabled, you can select specific ranks for each totem in the hover selection popup.",
+                name = L["When 'Use Highest Rank' is disabled, you can select specific ranks for each totem in the hover selection popup."],
                 order = 2,
                 fontSize = "medium",
             },
             showUnavailable = {
                 type = "toggle",
-                name = "Show Unavailable Totems",
-                desc = "Show totems you haven't learned yet in the selector (grayed out)",
+                name = L["Show Unavailable Totems"],
+                desc = L["Show totems you haven't learned yet in the selector (grayed out)"],
                 order = 3,
                 get = function()
                     return TotemBuddy.db.profile.showUnavailable
@@ -55,19 +56,19 @@ function TotemTab:GetOptions()
             },
             divider1 = {
                 type = "header",
-                name = "Default Totems",
+                name = L["Default Totems"],
                 order = 10,
             },
             defaultNote = {
                 type = "description",
-                name = "Choose the default totem for each element. These will be displayed on the totem bar.",
+                name = L["Choose the default totem for each element. These will be displayed on the totem bar."],
                 order = 11,
                 fontSize = "medium",
             },
-            earthDefault = self:CreateTotemDropdown(1, "Earth", 12),
-            fireDefault = self:CreateTotemDropdown(2, "Fire", 13),
-            waterDefault = self:CreateTotemDropdown(3, "Water", 14),
-            airDefault = self:CreateTotemDropdown(4, "Air", 15),
+            earthDefault = self:CreateTotemDropdown(1, L["Earth"], 12),
+            fireDefault = self:CreateTotemDropdown(2, L["Fire"], 13),
+            waterDefault = self:CreateTotemDropdown(3, L["Water"], 14),
+            airDefault = self:CreateTotemDropdown(4, L["Air"], 15),
         },
     }
 end
@@ -80,8 +81,8 @@ end
 function TotemTab:CreateTotemDropdown(element, name, order)
     return {
         type = "select",
-        name = name .. " Totem",
-        desc = "Default " .. name:lower() .. " totem to display",
+        name = name .. " " .. L["Totem"],
+        desc = string.format(L["Default %s totem to display"], name:lower()),
         order = order,
         values = function()
             -- Get modules
@@ -104,7 +105,7 @@ function TotemTab:CreateTotemDropdown(element, name, order)
             end
 
             -- Add "First Available" option
-            values["__first__"] = "First Available"
+            values["__first__"] = L["First Available"]
 
             return values
         end,

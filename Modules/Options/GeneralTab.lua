@@ -5,19 +5,20 @@
 
 ---@class GeneralTab
 local GeneralTab = TotemBuddyLoader:CreateModule("GeneralTab")
+local L = TotemBuddy_L or setmetatable({}, { __index = function(_, k) return k end })
 
 --- Get the options table for this tab
 ---@return table options The AceConfig options table
 function GeneralTab:GetOptions()
     return {
         type = "group",
-        name = "General",
+        name = L["General"],
         order = 1,
         args = {
             enabled = {
                 type = "toggle",
-                name = "Enable TotemBuddy",
-                desc = "Show or hide the totem bar",
+                name = L["Enable TotemBuddy"],
+                desc = L["Show or hide the totem bar"],
                 order = 1,
                 width = "full",
                 get = function()
@@ -37,8 +38,8 @@ function GeneralTab:GetOptions()
             },
             locked = {
                 type = "toggle",
-                name = "Lock Position",
-                desc = "Prevent the totem bar from being moved",
+                name = L["Lock Position"],
+                desc = L["Prevent the totem bar from being moved"],
                 order = 2,
                 get = function()
                     return TotemBuddy.db.profile.locked
@@ -53,8 +54,8 @@ function GeneralTab:GetOptions()
             },
             showTooltips = {
                 type = "toggle",
-                name = "Show Tooltips",
-                desc = "Show spell tooltips when hovering over totem tiles",
+                name = L["Show Tooltips"],
+                desc = L["Show spell tooltips when hovering over totem tiles"],
                 order = 3,
                 get = function()
                     return TotemBuddy.db.profile.showTooltips
@@ -65,13 +66,13 @@ function GeneralTab:GetOptions()
             },
             divider1 = {
                 type = "header",
-                name = "Display Options",
+                name = L["Display Options"],
                 order = 10,
             },
             showCooldowns = {
                 type = "toggle",
-                name = "Show Cooldowns",
-                desc = "Display cooldown swipe on totem tiles",
+                name = L["Show Cooldowns"],
+                desc = L["Display cooldown swipe on totem tiles"],
                 order = 11,
                 get = function()
                     return TotemBuddy.db.profile.showCooldowns
@@ -82,8 +83,8 @@ function GeneralTab:GetOptions()
             },
             showKeybinds = {
                 type = "toggle",
-                name = "Show Keybinds",
-                desc = "Display keybind text on totem tiles",
+                name = L["Show Keybinds"],
+                desc = L["Display keybind text on totem tiles"],
                 order = 12,
                 get = function()
                     return TotemBuddy.db.profile.showKeybinds
@@ -94,8 +95,8 @@ function GeneralTab:GetOptions()
             },
             showElementIndicator = {
                 type = "toggle",
-                name = "Show Element Indicator",
-                desc = "Display colored bar indicating totem element",
+                name = L["Show Element Indicator"],
+                desc = L["Display colored bar indicating totem element"],
                 order = 13,
                 get = function()
                     return TotemBuddy.db.profile.showElementIndicator
@@ -106,13 +107,13 @@ function GeneralTab:GetOptions()
             },
             divider1b = {
                 type = "header",
-                name = "Timer Options",
+                name = L["Timer Options"],
                 order = 14,
             },
             showCooldownText = {
                 type = "toggle",
-                name = "Show Cooldown Numbers",
-                desc = "Display countdown numbers when a totem is on cooldown",
+                name = L["Show Cooldown Numbers"],
+                desc = L["Display countdown numbers when a totem is on cooldown"],
                 order = 15,
                 get = function()
                     return TotemBuddy.db.profile.showCooldownText
@@ -123,8 +124,8 @@ function GeneralTab:GetOptions()
             },
             showDurationText = {
                 type = "toggle",
-                name = "Show Active Duration",
-                desc = "Display remaining time for active totems",
+                name = L["Show Active Duration"],
+                desc = L["Display remaining time for active totems"],
                 order = 16,
                 get = function()
                     return TotemBuddy.db.profile.showDurationText
@@ -135,8 +136,8 @@ function GeneralTab:GetOptions()
             },
             showActiveGlow = {
                 type = "toggle",
-                name = "Show Active Glow",
-                desc = "Display a glow effect when a totem is active",
+                name = L["Show Active Glow"],
+                desc = L["Display a glow effect when a totem is active"],
                 order = 17,
                 get = function()
                     return TotemBuddy.db.profile.showActiveGlow
@@ -147,8 +148,8 @@ function GeneralTab:GetOptions()
             },
             showDurationBar = {
                 type = "toggle",
-                name = "Show Duration Bar",
-                desc = "Display a progress bar showing remaining totem duration",
+                name = L["Show Duration Bar"],
+                desc = L["Display a progress bar showing remaining totem duration"],
                 order = 17.1,
                 get = function()
                     return TotemBuddy.db.profile.showDurationBar
@@ -159,8 +160,8 @@ function GeneralTab:GetOptions()
             },
             durationBarHeight = {
                 type = "range",
-                name = "Duration Bar Height",
-                desc = "Height of the duration progress bar in pixels",
+                name = L["Duration Bar Height"],
+                desc = L["Height of the duration progress bar in pixels"],
                 order = 17.2,
                 min = 2,
                 max = 10,
@@ -180,8 +181,8 @@ function GeneralTab:GetOptions()
             },
             expiringThreshold = {
                 type = "range",
-                name = "Expiring Warning Threshold",
-                desc = "Seconds remaining before totem is considered 'expiring soon' (triggers color change and pulse)",
+                name = L["Expiring Warning Threshold"],
+                desc = L["Seconds remaining before totem is considered 'expiring soon' (triggers color change and pulse)"],
                 order = 17.3,
                 min = 3,
                 max = 30,
@@ -195,8 +196,8 @@ function GeneralTab:GetOptions()
             },
             expiringColor = {
                 type = "color",
-                name = "Expiring Warning Color",
-                desc = "Color for duration text and bar when totem is about to expire",
+                name = L["Expiring Warning Color"],
+                desc = L["Color for duration text and bar when totem is about to expire"],
                 order = 17.4,
                 hasAlpha = false,
                 get = function()
@@ -209,13 +210,13 @@ function GeneralTab:GetOptions()
             },
             divider1c = {
                 type = "header",
-                name = "Selector Options",
+                name = L["Selector Options"],
                 order = 18,
             },
             showSelectorInCombat = {
                 type = "toggle",
-                name = "Show Selector in Combat",
-                desc = "Allow the totem selector popup to appear while in combat (note: you cannot change totems during combat)",
+                name = L["Show Selector in Combat"],
+                desc = L["Allow the totem selector popup to appear while in combat (note: you cannot change totems during combat)"],
                 order = 19,
                 get = function()
                     return TotemBuddy.db.profile.showSelectorInCombat
@@ -226,8 +227,8 @@ function GeneralTab:GetOptions()
             },
             lockSelector = {
                 type = "toggle",
-                name = "Lock Selector",
-                desc = "When enabled, the totem selector only opens when holding Shift while hovering or right-clicking",
+                name = L["Lock Selector"],
+                desc = L["When enabled, the totem selector only opens when holding Shift while hovering or right-clicking"],
                 order = 20,
                 get = function()
                     return TotemBuddy.db.profile.lockSelector
@@ -238,19 +239,19 @@ function GeneralTab:GetOptions()
             },
             selectorHint = {
                 type = "description",
-                name = "|cff888888Tip: Right-click a totem tile to quickly open the selector.|r",
+                name = "|cff888888" .. L["Tip: Right-click a totem tile to quickly open the selector."] .. "|r",
                 order = 20.1,
                 fontSize = "medium",
             },
             divider1d = {
                 type = "header",
-                name = "Selector Behavior",
+                name = L["Selector Behavior"],
                 order = 20.2,
             },
             castOnSelect = {
                 type = "toggle",
-                name = "Cast on Select",
-                desc = "When selecting a totem from the popup, immediately cast it in addition to setting it as the default. Only works out of combat.",
+                name = L["Cast on Select"],
+                desc = L["When selecting a totem from the popup, immediately cast it in addition to setting it as the default. Only works out of combat."],
                 order = 20.3,
                 get = function()
                     return TotemBuddy.db.profile.castOnSelect
@@ -261,13 +262,13 @@ function GeneralTab:GetOptions()
             },
             divider2 = {
                 type = "header",
-                name = "Actions",
+                name = L["Actions"],
                 order = 21,
             },
             resetPosition = {
                 type = "execute",
-                name = "Reset Position",
-                desc = "Reset the totem bar to the center of the screen",
+                name = L["Reset Position"],
+                desc = L["Reset the totem bar to the center of the screen"],
                 order = 21,
                 func = function()
                     TotemBuddy.db.profile.posX = 0
@@ -281,8 +282,8 @@ function GeneralTab:GetOptions()
             },
             rescanTotems = {
                 type = "execute",
-                name = "Rescan Totems",
-                desc = "Rescan your spellbook for known totems",
+                name = L["Rescan Totems"],
+                desc = L["Rescan your spellbook for known totems"],
                 order = 22,
                 func = function()
                     local SpellScanner = TotemBuddyLoader:ImportModule("SpellScanner")
@@ -293,7 +294,7 @@ function GeneralTab:GetOptions()
                     if TotemBar then
                         TotemBar:RefreshAllTiles()
                     end
-                    TotemBuddy:Print("Totem scan complete")
+                    TotemBuddy:Print(L["Totem scan complete"])
                 end,
             },
         },
