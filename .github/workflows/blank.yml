@@ -1,0 +1,104 @@
+name: Package & Release
+
+on:
+  push:
+    branches: [ "main" ]
+    tags:
+      - "v*"
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # required to create releases & upload release assets
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    env:
+      ADDON_NAME: TotemBuddy
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare addon folder
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          rm -rf dist
+          mkdir -p "dist/${ADDON_NAME}"
+
+          # Copy everything needed for the addon into dist/TotemBuddy/
+          # Exclude git + github metadata (and anything else you don't want shipped)
+          rsync -av \
+            --exclude=".git" \
+            --exclude=".github" \
+            --exclude=".gitignore" \
+            --exclude="dist" \
+            ./ "dist/${ADDON_NAME}/"
+
+          echo "Packaged files:"
+          find "dist/${ADDON_NAME}" -maxdepth 2 -type f | sed 's|^| - |'
+
+      - name: Create zip (folder name inside zip = TotemBuddy)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cd dist
+          VERSION="${GITHUB_REF_NAME}"
+          if [[ "${GITHUB_REF_TYPE}" != "tag" ]]; then
+            VERSION="${GITHUB_SHA::7}"
+          fi
+
+          ZIP_NAME="${ADDON_NAME}-${VERSION}.zip"
+          zip -r "${ZIP_NAME}" "${ADDON_NAME}"
+          ls -lah "${ZIP_NAME}"
+
+          echo "ZIP_NAME=${ZIP_NAME}" >> $GITHUB_ENV
+
+      - name: Upload artifact (for PRs / main pushes)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ZIP_NAME }}
+          path: dist/${{ env.ZIP_NAME }}
+          if-no-files-found: error
+
+  release:
+    # Only run on tag pushes
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: package
+    runs-on: ubuntu-latest
+    env:
+      ADDON_NAME: TotemBuddy
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Recreate the same zip in this job (simplest cross-job approach)
+      - name: Build zip for release
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf dist
+          mkdir -p "dist/${ADDON_NAME}"
+
+          rsync -av \
+            --exclude=".git" \
+            --exclude=".github" \
+            --exclude=".gitignore" \
+            --exclude="dist" \
+            ./ "dist/${ADDON_NAME}/"
+
+          cd dist
+          VERSION="${GITHUB_REF_NAME}"
+          ZIP_NAME="${ADDON_NAME}-${VERSION}.zip"
+          zip -r "${ZIP_NAME}" "${ADDON_NAME}"
+          echo "ZIP_NAME=${ZIP_NAME}" >> $GITHUB_ENV
+
+      - name: Create GitHub Release + upload zip
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/${{ env.ZIP_NAME }}
+          generate_release_notes: true
