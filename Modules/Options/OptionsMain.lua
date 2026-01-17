@@ -10,6 +10,7 @@ local OptionsMain = TotemBuddyLoader:CreateModule("OptionsMain")
 local GeneralTab = nil
 local LayoutTab = nil
 local TotemTab = nil
+local ModifiersTab = nil
 
 --- Initialize the options panel
 function OptionsMain:Initialize()
@@ -17,6 +18,7 @@ function OptionsMain:Initialize()
     GeneralTab = TotemBuddyLoader:ImportModule("GeneralTab")
     LayoutTab = TotemBuddyLoader:ImportModule("LayoutTab")
     TotemTab = TotemBuddyLoader:ImportModule("TotemTab")
+    ModifiersTab = TotemBuddyLoader:ImportModule("ModifiersTab")
 
     -- Build the main options table
     local options = {
@@ -37,6 +39,10 @@ function OptionsMain:Initialize()
 
     if TotemTab then
         options.args.totems = TotemTab:GetOptions()
+    end
+
+    if ModifiersTab then
+        options.args.modifiers = ModifiersTab:GetOptions()
     end
 
     -- Add profiles tab (from AceDBOptions)

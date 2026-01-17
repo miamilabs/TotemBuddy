@@ -145,6 +145,68 @@ function GeneralTab:GetOptions()
                     TotemBuddy.db.profile.showActiveGlow = value
                 end,
             },
+            showDurationBar = {
+                type = "toggle",
+                name = "Show Duration Bar",
+                desc = "Display a progress bar showing remaining totem duration",
+                order = 17.1,
+                get = function()
+                    return TotemBuddy.db.profile.showDurationBar
+                end,
+                set = function(_, value)
+                    TotemBuddy.db.profile.showDurationBar = value
+                end,
+            },
+            durationBarHeight = {
+                type = "range",
+                name = "Duration Bar Height",
+                desc = "Height of the duration progress bar in pixels",
+                order = 17.2,
+                min = 2,
+                max = 10,
+                step = 1,
+                disabled = function() return not TotemBuddy.db.profile.showDurationBar end,
+                get = function()
+                    return TotemBuddy.db.profile.durationBarHeight
+                end,
+                set = function(_, value)
+                    TotemBuddy.db.profile.durationBarHeight = value
+                    -- Update all tiles
+                    local TotemBar = TotemBuddyLoader:ImportModule("TotemBar")
+                    if TotemBar and TotemBar.UpdateAllTileSizes then
+                        TotemBar:UpdateAllTileSizes()
+                    end
+                end,
+            },
+            expiringThreshold = {
+                type = "range",
+                name = "Expiring Warning Threshold",
+                desc = "Seconds remaining before totem is considered 'expiring soon' (triggers color change and pulse)",
+                order = 17.3,
+                min = 3,
+                max = 30,
+                step = 1,
+                get = function()
+                    return TotemBuddy.db.profile.expiringThreshold
+                end,
+                set = function(_, value)
+                    TotemBuddy.db.profile.expiringThreshold = value
+                end,
+            },
+            expiringColor = {
+                type = "color",
+                name = "Expiring Warning Color",
+                desc = "Color for duration text and bar when totem is about to expire",
+                order = 17.4,
+                hasAlpha = false,
+                get = function()
+                    local c = TotemBuddy.db.profile.expiringColor or {1, 0.8, 0}
+                    return c[1], c[2], c[3]
+                end,
+                set = function(_, r, g, b)
+                    TotemBuddy.db.profile.expiringColor = {r, g, b}
+                end,
+            },
             divider1c = {
                 type = "header",
                 name = "Selector Options",
@@ -165,13 +227,36 @@ function GeneralTab:GetOptions()
             lockSelector = {
                 type = "toggle",
                 name = "Lock Selector",
-                desc = "When enabled, the totem selector only opens when holding Shift while hovering",
+                desc = "When enabled, the totem selector only opens when holding Shift while hovering or right-clicking",
                 order = 20,
                 get = function()
                     return TotemBuddy.db.profile.lockSelector
                 end,
                 set = function(_, value)
                     TotemBuddy.db.profile.lockSelector = value
+                end,
+            },
+            selectorHint = {
+                type = "description",
+                name = "|cff888888Tip: Right-click a totem tile to quickly open the selector.|r",
+                order = 20.1,
+                fontSize = "medium",
+            },
+            divider1d = {
+                type = "header",
+                name = "Selector Behavior",
+                order = 20.2,
+            },
+            castOnSelect = {
+                type = "toggle",
+                name = "Cast on Select",
+                desc = "When selecting a totem from the popup, immediately cast it in addition to setting it as the default. Only works out of combat.",
+                order = 20.3,
+                get = function()
+                    return TotemBuddy.db.profile.castOnSelect
+                end,
+                set = function(_, value)
+                    TotemBuddy.db.profile.castOnSelect = value
                 end,
             },
             divider2 = {

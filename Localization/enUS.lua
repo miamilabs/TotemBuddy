@@ -62,3 +62,29 @@ L["Scan Complete"] = "Totem scan complete"
 
 -- Make globally accessible
 TotemBuddy_L = L
+
+-- Keybinding Localization (global variables required by WoW API)
+BINDING_HEADER_TOTEMBUDDY = "TotemBuddy"
+
+-- Cast Element Totems
+BINDING_NAME_TOTEMBUDDY_CAST_FIRE = "Cast Fire Totem"
+BINDING_NAME_TOTEMBUDDY_CAST_EARTH = "Cast Earth Totem"
+BINDING_NAME_TOTEMBUDDY_CAST_WATER = "Cast Water Totem"
+BINDING_NAME_TOTEMBUDDY_CAST_AIR = "Cast Air Totem"
+
+-- Open Element Selectors
+BINDING_NAME_TOTEMBUDDY_SELECT_FIRE = "Select Fire Totem"
+BINDING_NAME_TOTEMBUDDY_SELECT_EARTH = "Select Earth Totem"
+BINDING_NAME_TOTEMBUDDY_SELECT_WATER = "Select Water Totem"
+BINDING_NAME_TOTEMBUDDY_SELECT_AIR = "Select Air Totem"
+
+-- Set Cycling
+BINDING_NAME_TOTEMBUDDY_NEXT_SET = "Next Totem Set"
+BINDING_NAME_TOTEMBUDDY_PREV_SET = "Previous Totem Set"
+
+-- Direct Set Access
+BINDING_NAME_TOTEMBUDDY_SET_1 = "Activate Set 1"
+BINDING_NAME_TOTEMBUDDY_SET_2 = "Activate Set 2"
+BINDING_NAME_TOTEMBUDDY_SET_3 = "Activate Set 3"
+BINDING_NAME_TOTEMBUDDY_SET_4 = "Activate Set 4"
+BINDING_NAME_TOTEMBUDDY_SET_5 = "Activate Set 5"

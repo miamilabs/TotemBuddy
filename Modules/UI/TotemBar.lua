@@ -11,10 +11,12 @@ local _TotemBar = TotemBar.private
 local TotemTile = nil
 local TotemData = nil
 local SpellScanner = nil
+local TotemSets = nil
 
 -- Main frame
 TotemBar.frame = nil
 TotemBar.tiles = {}
+TotemBar.setNameText = nil  -- FontString for set name display
 
 --- Create the totem bar
 function TotemBar:Create()
@@ -26,6 +28,7 @@ function TotemBar:Create()
     TotemTile = TotemBuddyLoader:ImportModule("TotemTile")
     TotemData = TotemBuddyLoader:ImportModule("TotemData")
     SpellScanner = TotemBuddyLoader:ImportModule("SpellScanner")
+    TotemSets = TotemBuddyLoader:ImportModule("TotemSets")
 
     local frame = CreateFrame("Frame", "TotemBuddyBar", UIParent, "BackdropTemplate")
     frame:SetFrameStrata("MEDIUM")
@@ -66,11 +69,13 @@ function TotemBar:Create()
     end)
     frame:SetScript("OnDragStop", function(self)
         self:StopMovingOrSizing()
-        -- Save position
+        -- Save position (guard against nil values from GetPoint)
         local point, _, _, x, y = self:GetPoint()
-        TotemBuddy.db.profile.anchor = point
-        TotemBuddy.db.profile.posX = x
-        TotemBuddy.db.profile.posY = y
+        if point and x and y then
+            TotemBuddy.db.profile.anchor = point
+            TotemBuddy.db.profile.posX = x
+            TotemBuddy.db.profile.posY = y
+        end
     end)
 
     -- Create 4 totem tiles
@@ -78,6 +83,12 @@ function TotemBar:Create()
     for i = 1, 4 do
         self.tiles[i] = TotemTile:Create(frame, i)
     end
+
+    -- Create set name display text (v2.0)
+    self.setNameText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    self.setNameText:SetPoint("TOP", frame, "TOP", 0, -2)
+    self.setNameText:SetTextColor(0.9, 0.9, 0.9, 1)
+    self.setNameText:SetText("")
 
     self.frame = frame
 
@@ -100,6 +111,9 @@ function TotemBar:Create()
 
     -- Set initial totems
     self:RefreshAllTiles()
+
+    -- Update set name display (v2.0)
+    self:UpdateSetNameDisplay()
 
     return frame
 end
@@ -293,6 +307,15 @@ function TotemBar:Hide()
         self.frame:Hide()
     end
 
+    -- Stop any active pulse animations on tiles (prevents CPU waste while hidden)
+    if self.tiles then
+        for _, tile in pairs(self.tiles) do
+            if tile and tile.pulseAnim and tile.isPulsing then
+                tile.pulseAnim:Stop()
+            end
+        end
+    end
+
     -- Also hide selector
     local TotemSelector = TotemBuddyLoader:ImportModule("TotemSelector")
     if TotemSelector then
@@ -322,6 +345,45 @@ end
 function TotemBar:SetScale(scale)
     if self.frame then
         self.frame:SetScale(scale)
+    end
+end
+
+--- Update all tile sizes (for duration bar height changes, etc.)
+function TotemBar:UpdateAllTileSizes()
+    if not self.tiles then
+        return
+    end
+    local size = TotemBuddy.db.profile.tileSize or 40
+    for _, tile in ipairs(self.tiles) do
+        tile:UpdateSize(size)
+    end
+end
+
+--- Update the set name display (v2.0)
+function TotemBar:UpdateSetNameDisplay()
+    if not self.setNameText then
+        return
+    end
+
+    -- Check if showing set name is enabled
+    if not TotemBuddy.db.profile.showSetName then
+        self.setNameText:Hide()
+        return
+    end
+
+    -- Get active set name
+    if not TotemSets then
+        TotemSets = TotemBuddyLoader:ImportModule("TotemSets")
+    end
+
+    local activeSet = TotemSets and TotemSets:GetActiveSet()
+
+    if activeSet then
+        self.setNameText:SetText(activeSet)
+        self.setNameText:Show()
+    else
+        self.setNameText:SetText("")
+        self.setNameText:Hide()
     end
 end
 

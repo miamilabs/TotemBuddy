@@ -1,0 +1,58 @@
+<Bindings>
+    <!-- TotemBuddy Keybindings -->
+    <!-- These bindings allow keyboard shortcuts for casting totems, opening selectors, and switching sets -->
+
+    <!-- Cast Element Totems -->
+    <Binding name="TOTEMBUDDY_CAST_FIRE" category="ADDONS" header="TOTEMBUDDY">
+        TotemBuddy_CastElement(1)
+    </Binding>
+    <Binding name="TOTEMBUDDY_CAST_EARTH" category="ADDONS" header="TOTEMBUDDY">
+        TotemBuddy_CastElement(2)
+    </Binding>
+    <Binding name="TOTEMBUDDY_CAST_WATER" category="ADDONS" header="TOTEMBUDDY">
+        TotemBuddy_CastElement(3)
+    </Binding>
+    <Binding name="TOTEMBUDDY_CAST_AIR" category="ADDONS" header="TOTEMBUDDY">
+        TotemBuddy_CastElement(4)
+    </Binding>
+
+    <!-- Open Selector for Element -->
+    <Binding name="TOTEMBUDDY_SELECT_FIRE" category="ADDONS" header="TOTEMBUDDY">
+        TotemBuddy_SelectElement(1)
+    </Binding>
+    <Binding name="TOTEMBUDDY_SELECT_EARTH" category="ADDONS" header="TOTEMBUDDY">
+        TotemBuddy_SelectElement(2)
+    </Binding>
+    <Binding name="TOTEMBUDDY_SELECT_WATER" category="ADDONS" header="TOTEMBUDDY">
+        TotemBuddy_SelectElement(3)
+    </Binding>
+    <Binding name="TOTEMBUDDY_SELECT_AIR" category="ADDONS" header="TOTEMBUDDY">
+        TotemBuddy_SelectElement(4)
+    </Binding>
+
+    <!-- Cycle Sets -->
+    <Binding name="TOTEMBUDDY_NEXT_SET" category="ADDONS" header="TOTEMBUDDY">
+        TotemBuddy_CycleSet(1)
+    </Binding>
+    <Binding name="TOTEMBUDDY_PREV_SET" category="ADDONS" header="TOTEMBUDDY">
+        TotemBuddy_CycleSet(-1)
+    </Binding>
+
+    <!-- Direct Set Access (Set 1-5) -->
+    <Binding name="TOTEMBUDDY_SET_1" category="ADDONS" header="TOTEMBUDDY">
+        TotemBuddy_ActivateSet(1)
+    </Binding>
+    <Binding name="TOTEMBUDDY_SET_2" category="ADDONS" header="TOTEMBUDDY">
+        TotemBuddy_ActivateSet(2)
+    </Binding>
+    <Binding name="TOTEMBUDDY_SET_3" category="ADDONS" header="TOTEMBUDDY">
+        TotemBuddy_ActivateSet(3)
+    </Binding>
+    <Binding name="TOTEMBUDDY_SET_4" category="ADDONS" header="TOTEMBUDDY">
+        TotemBuddy_ActivateSet(4)
+    </Binding>
+    <Binding name="TOTEMBUDDY_SET_5" category="ADDONS" header="TOTEMBUDDY">
+        TotemBuddy_ActivateSet(5)
+    </Binding>
+
+</Bindings>

@@ -23,6 +23,16 @@ function TotemSelector:Create()
         return self.frame
     end
 
+    -- Cancel any existing timers from a previous instance (defensive cleanup)
+    if self.hideTimer then
+        self.hideTimer:Cancel()
+        self.hideTimer = nil
+    end
+    if self.cooldownTimer then
+        self.cooldownTimer:Cancel()
+        self.cooldownTimer = nil
+    end
+
     local frame = CreateFrame("Frame", "TotemBuddySelector", UIParent, "BackdropTemplate")
     frame:SetFrameStrata("DIALOG")
     frame:SetClampedToScreen(true)
@@ -361,24 +371,57 @@ function _TotemSelector.OnButtonClick(btn)
         return
     end
 
-    -- CRITICAL: Cannot modify secure frame attributes during combat
-    if InCombatLockdown() then
-        TotemBuddy:Print("Cannot change default totem while in combat.")
-        return
-    end
-
     -- Get the spell ID to use
     local spellId = TotemBuddy.HighestRanks[totemData.name]
     if not spellId then
         return
     end
 
-    -- Save as default for this element
     local element = tile.elementIndex
-    TotemBuddy.db.profile.defaultTotems[element] = totemData.name
+    local db = TotemBuddy.db.profile
+
+    -- CRITICAL: Cannot modify secure frame attributes during combat
+    if InCombatLockdown() then
+        -- In combat: queue the change for when combat ends
+        tile.pendingTotemData = totemData
+        tile.pendingSpellId = spellId
+
+        -- Visual feedback: flash the selector button to confirm queuing
+        if btn.highlight then
+            btn.highlight:SetColorTexture(1, 0.8, 0, 0.5)  -- Yellow flash
+            C_Timer.After(0.3, function()
+                if btn.highlight then
+                    btn.highlight:SetColorTexture(1, 1, 1, 0.3)  -- Reset
+                end
+            end)
+        end
+
+        -- Show feedback message
+        local spellName = GetSpellInfo(spellId) or totemData.name
+        TotemBuddy:Print(spellName .. " will be set as default when leaving combat.")
+
+        -- Hide selector
+        TotemSelector:Hide()
+        return
+    end
+
+    -- Out of combat: save as default for this element
+    db.defaultTotems[element] = totemData.name
 
     -- Update the tile
     tile:SetTotem(spellId, totemData)
+
+    -- Optionally cast the totem immediately after selection
+    if db.castOnSelect then
+        local spellName = GetSpellInfo(spellId)
+        -- Re-check combat state and wrap in pcall for safety
+        if spellName and not InCombatLockdown() then
+            local ok, err = pcall(CastSpellByName, spellName)
+            if not ok then
+                TotemBuddy:Print("Failed to cast " .. spellName .. ": " .. tostring(err))
+            end
+        end
+    end
 
     -- Hide selector
     TotemSelector:Hide()
@@ -395,14 +438,48 @@ function _TotemSelector.OnButtonEnter(btn)
 
     -- Get highest known rank for tooltip
     local spellId = TotemBuddy.HighestRanks[btn.totemData.name]
-    if spellId then
+
+    if spellId and btn.isKnown then
+        -- Show full spell info for known totems
         GameTooltip:SetSpellByID(spellId)
+
+        -- Show cooldown info if on cooldown
+        local start, duration, enabled = GetSpellCooldown(spellId)
+        if start and start > 0 and duration > 1.5 then
+            local remaining = (start + duration) - GetTime()
+            if remaining > 0 then
+                GameTooltip:AddLine(" ")
+                GameTooltip:AddLine("Cooldown: " .. FormatTime(remaining), 1, 0.5, 0.5)
+            end
+        end
+
         GameTooltip:AddLine(" ")
-        GameTooltip:AddLine("Click to set as default", 0.7, 0.7, 0.7)
+
+        -- Different hint text based on combat state
+        if InCombatLockdown() then
+            GameTooltip:AddLine("Click to queue as default (after combat)", 1, 0.8, 0)
+        else
+            local castOnSelect = TotemBuddy.db.profile.castOnSelect
+            if castOnSelect then
+                GameTooltip:AddLine("Click to set as default and cast", 0.7, 0.7, 0.7)
+            else
+                GameTooltip:AddLine("Click to set as default", 0.7, 0.7, 0.7)
+            end
+        end
     else
         -- Show basic info for unavailable totems
-        GameTooltip:AddLine(btn.totemData.name)
-        GameTooltip:AddLine("Level " .. btn.totemData.levelRequired .. " required", 1, 0, 0)
+        GameTooltip:AddLine(btn.totemData.name, 1, 1, 1)
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine("Not yet learned", 1, 0.3, 0.3)
+
+        if btn.totemData.levelRequired then
+            local playerLevel = UnitLevel("player")
+            if playerLevel < btn.totemData.levelRequired then
+                GameTooltip:AddLine("Requires level " .. btn.totemData.levelRequired, 0.7, 0.7, 0.7)
+            else
+                GameTooltip:AddLine("Visit a trainer to learn", 0.7, 0.7, 0.7)
+            end
+        end
     end
 
     GameTooltip:Show()

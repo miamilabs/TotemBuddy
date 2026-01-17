@@ -2,7 +2,7 @@
 ## Title: TotemBuddy
 ## Notes: Shaman totem management with quick-access tiles and flexible layout
 ## Author: Paul
-## Version: 1.0.0
+## Version: 2.0.0
 ## SavedVariables: TotemBuddyDB
 ## OptionalDeps: Ace3
 ## X-Category: Shaman
@@ -12,6 +12,10 @@
 # Libraries
 embeds.xml
 
+# Keybindings (stub must load before XML for function availability)
+BindingsStub.lua
+Bindings.xml
+
 # Core
 Modules\Loader.lua
 TotemBuddy.lua
@@ -20,7 +24,10 @@ TotemBuddy.lua
 Data\ClassicTotems.lua
 Data\TBCTotems.lua
 
-# Core Modules
+# Core Modules (APICompat and Migration must load before EventHandler)
+Modules\Core\APICompat.lua
+Modules\Core\Migration.lua
+Modules\Core\TotemSets.lua
 Modules\Core\EventHandler.lua
 Modules\Core\TotemData.lua
 Modules\Core\SpellScanner.lua
@@ -30,6 +37,7 @@ Modules\Options\OptionsDefaults.lua
 Modules\Options\GeneralTab.lua
 Modules\Options\LayoutTab.lua
 Modules\Options\TotemTab.lua
+Modules\Options\ModifiersTab.lua
 Modules\Options\OptionsMain.lua
 
 # UI
