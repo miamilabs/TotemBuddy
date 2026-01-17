@@ -260,16 +260,112 @@ function GeneralTab:GetOptions()
                     TotemBuddy.db.profile.castOnSelect = value
                 end,
             },
+            -- ===========================================
+            -- EXTRA FEATURES
+            -- ===========================================
+            dividerExtras = {
+                type = "header",
+                name = L["Extra Features"],
+                order = 25,
+            },
+            showCallOfTotems = {
+                type = "toggle",
+                name = L["Show Call of Totems"],
+                desc = L["Display button(s) for Call of the Elements/Ancestors/Spirits spells"],
+                order = 26,
+                width = "full",
+                get = function()
+                    return TotemBuddy.db.profile.showCallOfTotems
+                end,
+                set = function(_, value)
+                    TotemBuddy.db.profile.showCallOfTotems = value
+                    local TotemBar = TotemBuddyLoader:ImportModule("TotemBar")
+                    if TotemBar then
+                        if InCombatLockdown() then
+                            TotemBar.pendingExtrasUpdate = true
+                            TotemBuddy:Print(L["Changes will apply after combat."])
+                        else
+                            TotemBar:UpdateExtrasVisibility()
+                            TotemBar:UpdateLayout()
+                        end
+                    end
+                end,
+                disabled = function()
+                    return not TotemBuddy.HasAnyCallSpells
+                end,
+            },
+            showWeaponImbues = {
+                type = "toggle",
+                name = L["Show Weapon Imbues"],
+                desc = L["Display buttons for weapon enchantments (Rockbiter, Flametongue, Windfury, etc.)"],
+                order = 27,
+                width = "full",
+                get = function()
+                    return TotemBuddy.db.profile.showWeaponImbues
+                end,
+                set = function(_, value)
+                    TotemBuddy.db.profile.showWeaponImbues = value
+                    local TotemBar = TotemBuddyLoader:ImportModule("TotemBar")
+                    if TotemBar then
+                        if InCombatLockdown() then
+                            TotemBar.pendingExtrasUpdate = true
+                            TotemBuddy:Print(L["Changes will apply after combat."])
+                        else
+                            TotemBar:UpdateExtrasVisibility()
+                            TotemBar:UpdateLayout()
+                        end
+                    end
+                end,
+                disabled = function()
+                    return not TotemBuddy.HasAnyImbueSpells
+                end,
+            },
+            showShields = {
+                type = "toggle",
+                name = L["Show Shields"],
+                desc = L["Display button for Lightning Shield, Water Shield, or Earth Shield"],
+                order = 28,
+                width = "full",
+                get = function()
+                    return TotemBuddy.db.profile.showShields
+                end,
+                set = function(_, value)
+                    TotemBuddy.db.profile.showShields = value
+                    local TotemBar = TotemBuddyLoader:ImportModule("TotemBar")
+                    if TotemBar then
+                        if InCombatLockdown() then
+                            TotemBar.pendingExtrasUpdate = true
+                            TotemBuddy:Print(L["Changes will apply after combat."])
+                        else
+                            TotemBar:UpdateExtrasVisibility()
+                            TotemBar:UpdateLayout()
+                        end
+                    end
+                end,
+                disabled = function()
+                    return not TotemBuddy.HasAnyShieldSpells
+                end,
+            },
+            extrasHint = {
+                type = "description",
+                name = "|cff888888" .. L["Note: Features are disabled if no spells are known. Use 'Rescan Totems' after learning new spells."] .. "|r",
+                order = 29,
+                fontSize = "medium",
+            },
+
+            -- ===========================================
+            -- ACTIONS
+            -- ===========================================
             divider2 = {
                 type = "header",
                 name = L["Actions"],
-                order = 21,
+                order = 30,
             },
             resetPosition = {
                 type = "execute",
                 name = L["Reset Position"],
                 desc = L["Reset the totem bar to the center of the screen"],
-                order = 21,
+                order = 31,
                 func = function()
                     TotemBuddy.db.profile.posX = 0
                     TotemBuddy.db.profile.posY = -200
@@ -283,17 +379,30 @@ function GeneralTab:GetOptions()
             rescanTotems = {
                 type = "execute",
                 name = L["Rescan Totems"],
-                desc = L["Rescan your spellbook for known totems"],
-                order = 22,
+                desc = L["Rescan your spellbook for known totems, imbues, shields, and call spells"],
+                order = 32,
                 func = function()
+                    -- Scan totems
                     local SpellScanner = TotemBuddyLoader:ImportModule("SpellScanner")
                     if SpellScanner then
                         SpellScanner:ScanTotems()
                     end
+
+                    -- Scan extras (Call, Imbues, Shields)
+                    local ExtrasScanner = TotemBuddyLoader:ImportModule("ExtrasScanner")
+                    if ExtrasScanner then
+                        ExtrasScanner:ScanAllExtras()
+                    end
+
+                    -- Refresh UI
                     local TotemBar = TotemBuddyLoader:ImportModule("TotemBar")
                     if TotemBar then
                         TotemBar:RefreshAllTiles()
+                        if TotemBar.RefreshAllExtras then
+                            TotemBar:RefreshAllExtras()
+                        end
                     end
+
                     TotemBuddy:Print(L["Totem scan complete"])
                 end,
             },

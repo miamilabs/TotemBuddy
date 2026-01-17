@@ -28,6 +28,7 @@ Localization\deDE.lua
 # Data
 Data\ClassicTotems.lua
 Data\TBCTotems.lua
+Data\ShamanExtras.lua
 
 # Core Modules (APICompat and Migration must load before EventHandler)
 Modules\Core\APICompat.lua
@@ -36,6 +37,7 @@ Modules\Core\TotemSets.lua
 Modules\Core\EventHandler.lua
 Modules\Core\TotemData.lua
 Modules\Core\SpellScanner.lua
+Modules\Core\ExtrasScanner.lua
 
 # Options
 Modules\Options\OptionsDefaults.lua
@@ -48,4 +50,9 @@ Modules\Options\OptionsMain.lua
 # UI
 Modules\UI\TotemTile.lua
 Modules\UI\TotemSelector.lua
+Modules\UI\CallTile.lua
+Modules\UI\ImbueTile.lua
+Modules\UI\ImbueSelector.lua
+Modules\UI\ShieldTile.lua
+Modules\UI\ShieldSelector.lua
 Modules\UI\TotemBar.lua

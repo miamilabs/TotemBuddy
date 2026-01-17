@@ -140,6 +140,25 @@ L["All modifier overrides cleared."] = "Alle Modifikator-Überschreibungen gelö
 L["None (disabled)"] = "Keine (deaktiviert)"
 L["Cannot update macros in combat. Changes will apply after combat ends."] = "Makros können im Kampf nicht aktualisiert werden. Änderungen werden nach dem Kampf angewendet."
 
+-- Earth Shield Targeting
+L["Earth Shield Targeting"] = "Erdschild-Zielauswahl"
+L["Configure which target Earth Shield casts on when holding modifier keys. Changes apply after leaving combat."] = "Konfiguriere auf welches Ziel Erdschild wirkt wenn Modifikatortasten gedrückt werden. Änderungen werden nach dem Kampf angewendet."
+L["No Modifier (Default)"] = "Kein Modifikator (Standard)"
+L["Shift+Click"] = "Umschalt+Klick"
+L["Ctrl+Click"] = "Strg+Klick"
+L["Alt+Click"] = "Alt+Klick"
+L["Target for Earth Shield when %s is used"] = "Ziel für Erdschild wenn %s verwendet wird"
+L["Disabled"] = "Deaktiviert"
+L["Self"] = "Selbst"
+L["Focus"] = "Fokus"
+L["Party"] = "Gruppe"
+L["Party 1"] = "Gruppe 1"
+L["Party 2"] = "Gruppe 2"
+L["Party 3"] = "Gruppe 3"
+L["Party 4"] = "Gruppe 4"
+L["Party 5"] = "Gruppe 5"
+L["Click"] = "Klick"
+
 -- Profiles
 L["Profiles"] = "Profile"
 
@@ -163,6 +182,42 @@ L["Click to set as default"] = "Klicken um als Standard zu setzen"
 L["Not yet learned"] = "Noch nicht erlernt"
 L["Requires level %d"] = "Benötigt Stufe %d"
 L["Visit a trainer to learn"] = "Besuche einen Lehrer zum Erlernen"
+
+-- Extra Features Section
+L["Extra Features"] = "Zusatzfunktionen"
+L["Show Call of Totems"] = "Ruf der Totems anzeigen"
+L["Show Call of Elements, Call of the Ancestors, and Call of the Spirits buttons"] = "Zeige Schaltflächen für Ruf der Elemente, Ruf der Ahnen und Ruf der Geister"
+L["Show Weapon Imbues"] = "Waffenverzauberungen anzeigen"
+L["Show weapon imbue tiles for mainhand and offhand"] = "Zeige Waffenverzauberungs-Kacheln für Haupt- und Nebenhand"
+L["Show Shields"] = "Schilde anzeigen"
+L["Show shield tile for Lightning Shield, Water Shield, and Earth Shield"] = "Zeige Schild-Kachel für Blitzschlagschild, Wasserschild und Erdschild"
+L["Changes will apply after combat."] = "Änderungen werden nach dem Kampf angewendet."
+
+-- Imbue/Shield Status
+L["Active"] = "Aktiv"
+L["Not active"] = "Nicht aktiv"
+L["charges"] = "Aufladungen"
+L["Active: %s remaining"] = "Aktiv: %s verbleibend"
+L["Mainhand"] = "Haupthand"
+L["Offhand"] = "Nebenhand"
+L["Applies to: %s"] = "Wird angewandt auf: %s"
+L["Right-click to select imbue"] = "Rechtsklick um Verzauberung auszuwählen"
+L["Right-click to select shield"] = "Rechtsklick um Schild auszuwählen"
+L["Click to set for %s"] = "Klicken um für %s zu setzen"
+L["Can be cast on friendly targets"] = "Kann auf freundliche Ziele gewirkt werden"
+L["Casts on mouseover target or self"] = "Wirkt auf Mouseover-Ziel oder sich selbst"
+
+-- Selector Tooltips
+L["Click to set as default"] = "Klicken um als Standard zu setzen"
+L["%s will be set as default when leaving combat."] = "%s wird nach dem Kampf als Standard gesetzt."
+L["Cannot open selector during combat."] = "Auswahl kann im Kampf nicht geöffnet werden."
+
+-- GeneralTab Extra Features
+L["Display button(s) for Call of the Elements/Ancestors/Spirits spells"] = "Zeige Schaltfläche(n) für Ruf der Elemente/Ahnen/Geister Zauber"
+L["Display buttons for weapon enchantments (Rockbiter, Flametongue, Windfury, etc.)"] = "Zeige Schaltflächen für Waffenverzauberungen (Felsbeiszer, Flammenzunge, Windzorn, etc.)"
+L["Display button for Lightning Shield, Water Shield, or Earth Shield"] = "Zeige Schaltfläche für Blitzschlagschild, Wasserschild oder Erdschild"
+L["Note: Features are disabled if no spells are known. Use 'Rescan Totems' after learning new spells."] = "Hinweis: Funktionen sind deaktiviert wenn keine Zauber bekannt sind. Verwende 'Totems neu scannen' nach dem Erlernen neuer Zauber."
+L["Rescan your spellbook for known totems, imbues, shields, and call spells"] = "Zauberbuch nach bekannten Totems, Verzauberungen, Schilden und Ruf-Zaubern durchsuchen"
 
 -- Keybinding Localization (global variables required by WoW API)
 BINDING_HEADER_TOTEMBUDDY = "TotemBuddy"

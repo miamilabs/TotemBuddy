@@ -12,11 +12,22 @@ local TotemTile = nil
 local TotemData = nil
 local SpellScanner = nil
 local TotemSets = nil
+local ExtrasScanner = nil
+local CallTile = nil
+local ImbueTile = nil
+local ShieldTile = nil
 
 -- Main frame
 TotemBar.frame = nil
 TotemBar.tiles = {}
 TotemBar.setNameText = nil  -- FontString for set name display
+
+-- Extra tiles (v2.1)
+TotemBar.callTiles = {}
+TotemBar.imbueMH = nil
+TotemBar.imbueOH = nil
+TotemBar.shieldTile = nil
+TotemBar.pendingExtrasUpdate = false
 
 --- Create the totem bar
 function TotemBar:Create()
@@ -29,6 +40,10 @@ function TotemBar:Create()
     TotemData = TotemBuddyLoader:ImportModule("TotemData")
     SpellScanner = TotemBuddyLoader:ImportModule("SpellScanner")
     TotemSets = TotemBuddyLoader:ImportModule("TotemSets")
+    ExtrasScanner = TotemBuddyLoader:ImportModule("ExtrasScanner")
+    CallTile = TotemBuddyLoader:ImportModule("CallTile")
+    ImbueTile = TotemBuddyLoader:ImportModule("ImbueTile")
+    ShieldTile = TotemBuddyLoader:ImportModule("ShieldTile")
 
     local frame = CreateFrame("Frame", "TotemBuddyBar", UIParent, "BackdropTemplate")
     frame:SetFrameStrata("MEDIUM")
@@ -92,6 +107,9 @@ function TotemBar:Create()
 
     self.frame = frame
 
+    -- Create extra tiles (v2.1: Call, Imbues, Shield)
+    self:CreateExtraTiles()
+
     -- OnUpdate handler (will be set when shown, removed when hidden)
     self.updateInterval = 0.1
     self.timeSinceLastUpdate = 0
@@ -100,6 +118,7 @@ function TotemBar:Create()
         if TotemBar.timeSinceLastUpdate >= TotemBar.updateInterval then
             TotemBar.timeSinceLastUpdate = 0
             TotemBar:UpdateTimers()
+            TotemBar:UpdateExtraTimers()
         end
     end
 
@@ -144,12 +163,22 @@ function TotemBar:UpdateLayout()
     local spacing = TotemBuddy.db.profile.tileSpacing or 4
     local padding = 8
 
-    -- Update tile sizes
+    -- Update tile sizes for main tiles
     for _, tile in ipairs(self.tiles) do
         tile:UpdateSize(size)
     end
 
-    -- Position tiles based on layout
+    -- Update extra tile sizes
+    if self.callTiles then
+        for _, tile in ipairs(self.callTiles) do
+            if tile.UpdateSize then tile:UpdateSize(size) end
+        end
+    end
+    if self.imbueMH and self.imbueMH.UpdateSize then self.imbueMH:UpdateSize(size) end
+    if self.imbueOH and self.imbueOH.UpdateSize then self.imbueOH:UpdateSize(size) end
+    if self.shieldTile and self.shieldTile.UpdateSize then self.shieldTile:UpdateSize(size) end
+
+    -- Position main totem tiles (4 tiles)
     for i, tile in ipairs(self.tiles) do
         tile:ClearAllPoints()
 
@@ -170,18 +199,50 @@ function TotemBar:UpdateLayout()
         end
     end
 
-    -- Resize frame to fit tiles
+    -- Get extra tiles
+    local extraTiles = self:GetVisibleExtraTiles()
+    local extraCount = #extraTiles
+
+    -- Position extra tiles (after the 4 main tiles)
+    for i, tile in ipairs(extraTiles) do
+        tile:ClearAllPoints()
+        local slotIndex = 4 + i  -- After the 4 totem tiles
+
+        if layout == "horizontal" then
+            tile:SetPoint("LEFT", self.frame, "LEFT",
+                padding + (slotIndex - 1) * (size + spacing), 0)
+
+        elseif layout == "vertical" then
+            tile:SetPoint("TOP", self.frame, "TOP",
+                0, -padding - (slotIndex - 1) * (size + spacing))
+
+        elseif layout == "grid2x2" then
+            -- For grid: extras continue in the grid pattern
+            local row = math.floor((slotIndex - 1) / 2)
+            local col = (slotIndex - 1) % 2
+            tile:SetPoint("TOPLEFT", self.frame, "TOPLEFT",
+                padding + col * (size + spacing),
+                -padding - row * (size + spacing))
+        end
+    end
+
+    -- Calculate total tile count for frame sizing
+    local totalTiles = 4 + extraCount
+
+    -- Resize frame to fit all tiles
     local width, height
 
     if layout == "horizontal" then
-        width = padding * 2 + 4 * size + 3 * spacing
+        width = padding * 2 + totalTiles * size + (totalTiles - 1) * spacing
         height = padding * 2 + size
     elseif layout == "vertical" then
         width = padding * 2 + size
-        height = padding * 2 + 4 * size + 3 * spacing
+        height = padding * 2 + totalTiles * size + (totalTiles - 1) * spacing
     elseif layout == "grid2x2" then
-        width = padding * 2 + 2 * size + spacing
-        height = padding * 2 + 2 * size + spacing
+        local cols = 2
+        local rows = math.ceil(totalTiles / cols)
+        width = padding * 2 + cols * size + (cols - 1) * spacing
+        height = padding * 2 + rows * size + (rows - 1) * spacing
     end
 
     self.frame:SetSize(width, height)
@@ -417,6 +478,356 @@ function TotemBar:SetBorderVisible(show)
     else
         self.frame:SetBackdrop(nil)
     end
+end
+
+-- =============================================================================
+-- EXTRA TILES (v2.1)
+-- =============================================================================
+
+--- Create the extra tiles (Call, Imbues, Shield)
+function TotemBar:CreateExtraTiles()
+    if not self.frame then return end
+
+    -- Get modules if needed
+    if not CallTile then CallTile = TotemBuddyLoader:ImportModule("CallTile") end
+    if not ImbueTile then ImbueTile = TotemBuddyLoader:ImportModule("ImbueTile") end
+    if not ShieldTile then ShieldTile = TotemBuddyLoader:ImportModule("ShieldTile") end
+    if not ExtrasScanner then ExtrasScanner = TotemBuddyLoader:ImportModule("ExtrasScanner") end
+
+    -- Create Call tiles (up to 3)
+    self.callTiles = {}
+    if CallTile then
+        for i = 1, 3 do
+            self.callTiles[i] = CallTile:Create(self.frame, i)
+            self.callTiles[i]:Hide()  -- Hidden by default
+        end
+    end
+
+    -- Create Imbue tiles (Mainhand + Offhand)
+    if ImbueTile then
+        self.imbueMH = ImbueTile:Create(self.frame, "mainhand")
+        self.imbueMH:Hide()
+
+        self.imbueOH = ImbueTile:Create(self.frame, "offhand")
+        self.imbueOH:Hide()
+    end
+
+    -- Create Shield tile
+    if ShieldTile then
+        self.shieldTile = ShieldTile:Create(self.frame)
+        self.shieldTile:Hide()
+    end
+end
+
+--- Update visibility of extra tiles based on settings
+function TotemBar:UpdateExtrasVisibility()
+    if not self.frame then return end
+
+    local db = TotemBuddy.db.profile
+
+    -- Call tiles
+    if self.callTiles then
+        local showCall = db.showCallOfTotems and TotemBuddy.HasAnyCallSpells
+        for _, tile in ipairs(self.callTiles) do
+            if showCall then
+                -- Will be shown/hidden in RefreshAllExtras based on known spells
+            else
+                tile:Hide()
+            end
+        end
+        if showCall then
+            self:RefreshCallTiles()
+        end
+    end
+
+    -- Imbue tiles
+    if db.showWeaponImbues and TotemBuddy.HasAnyImbueSpells then
+        if self.imbueMH then
+            self.imbueMH:Show()
+        end
+        if self.imbueOH then
+            -- Only show if offhand WEAPON equipped (not shield or held item)
+            local showOH = false
+            local ohItemId = GetInventoryItemID("player", 17)
+            if ohItemId then
+                local _, _, _, _, _, _, _, _, equipLoc = GetItemInfo(ohItemId)
+                if equipLoc == nil then
+                    -- Item info not cached yet; schedule retry and show optimistically
+                    C_Timer.After(0.5, function()
+                        if self and self.UpdateExtrasVisibility and not InCombatLockdown() then
+                            self:UpdateExtrasVisibility()
+                            self:UpdateLayout()
+                        end
+                    end)
+                    showOH = true
+                elseif equipLoc ~= "INVTYPE_SHIELD" and equipLoc ~= "INVTYPE_HOLDABLE" then
+                    -- Only show for actual weapons, not shields or held items
+                    showOH = true
+                end
+            end
+            if showOH then
+                self.imbueOH:Show()
+            else
+                self.imbueOH:Hide()
+            end
+        end
+        self:RefreshImbueTiles()
+    else
+        if self.imbueMH then self.imbueMH:Hide() end
+        if self.imbueOH then self.imbueOH:Hide() end
+    end
+
+    -- Shield tile
+    if db.showShields and TotemBuddy.HasAnyShieldSpells then
+        if self.shieldTile then
+            self.shieldTile:Show()
+        end
+        self:RefreshShieldTile()
+    else
+        if self.shieldTile then self.shieldTile:Hide() end
+    end
+end
+
+--- Refresh all extra tiles
+function TotemBar:RefreshAllExtras()
+    self:RefreshCallTiles()
+    self:RefreshImbueTiles()
+    self:RefreshShieldTile()
+end
+
+--- Refresh Call tiles with known spells
+function TotemBar:RefreshCallTiles()
+    if not ExtrasScanner then
+        ExtrasScanner = TotemBuddyLoader:ImportModule("ExtrasScanner")
+    end
+    if not ExtrasScanner or not self.callTiles then return end
+
+    local db = TotemBuddy.db.profile
+    if not db.showCallOfTotems then return end
+
+    local knownCalls = ExtrasScanner:GetKnownCallSpells()
+    local callIndex = 0
+
+    for _, callInfo in ipairs(knownCalls) do
+        callIndex = callIndex + 1
+        if callIndex <= #self.callTiles then
+            local tile = self.callTiles[callIndex]
+            tile:SetSpell(callInfo.spellId, callInfo.data)
+            tile:Show()
+        end
+    end
+
+    -- Hide unused call tiles
+    for i = callIndex + 1, #self.callTiles do
+        self.callTiles[i]:Hide()
+    end
+end
+
+--- Refresh Imbue tiles with default spells
+function TotemBar:RefreshImbueTiles()
+    if not ExtrasScanner then
+        ExtrasScanner = TotemBuddyLoader:ImportModule("ExtrasScanner")
+    end
+    if not ExtrasScanner then return end
+
+    local db = TotemBuddy.db.profile
+    if not db.showWeaponImbues then return end
+
+    -- Get default or first known imbue
+    local mhSpellId = db.defaultMainhandImbue
+    local ohSpellId = db.defaultOffhandImbue
+
+    -- If no default set, use first known
+    if not mhSpellId then
+        mhSpellId = ExtrasScanner:GetFirstKnownImbue()
+    end
+    if not ohSpellId then
+        ohSpellId = ExtrasScanner:GetFirstKnownImbue()
+    end
+
+    -- Get imbue data
+    local ShamanExtrasDB = _G.TotemBuddyShamanExtras
+    local mhData = mhSpellId and ShamanExtrasDB and ShamanExtrasDB:GetImbue(mhSpellId)
+    local ohData = ohSpellId and ShamanExtrasDB and ShamanExtrasDB:GetImbue(ohSpellId)
+
+    -- Update mainhand tile
+    if self.imbueMH then
+        self.imbueMH:SetImbue(mhSpellId, mhData)
+    end
+
+    -- Update offhand tile
+    if self.imbueOH then
+        self.imbueOH:SetImbue(ohSpellId, ohData)
+    end
+end
+
+--- Refresh Shield tile with default spell
+function TotemBar:RefreshShieldTile()
+    if not ExtrasScanner then
+        ExtrasScanner = TotemBuddyLoader:ImportModule("ExtrasScanner")
+    end
+    if not ExtrasScanner or not self.shieldTile then return end
+
+    local db = TotemBuddy.db.profile
+    if not db.showShields then return end
+
+    -- Get default or first known shield
+    local shieldSpellId = db.defaultShield
+    if not shieldSpellId then
+        shieldSpellId = ExtrasScanner:GetFirstKnownShield()
+    end
+
+    -- Get shield data
+    local ShamanExtrasDB = _G.TotemBuddyShamanExtras
+    local shieldData = shieldSpellId and ShamanExtrasDB and ShamanExtrasDB:GetShield(shieldSpellId)
+
+    self.shieldTile:SetShield(shieldSpellId, shieldData)
+end
+
+--- Process pending extra tile updates (called after combat)
+function TotemBar:ProcessPendingExtras()
+    local db = TotemBuddy.db.profile
+
+    -- Process pending Call tile attributes
+    if self.callTiles then
+        for _, tile in ipairs(self.callTiles) do
+            if tile.ApplyPendingAttributes then
+                tile:ApplyPendingAttributes()
+            end
+        end
+    end
+
+    -- Process pending Imbue tile attributes AND selector data
+    if self.imbueMH then
+        if self.imbueMH.ApplyPendingAttributes then
+            self.imbueMH:ApplyPendingAttributes()
+        end
+        -- Handle pending imbue selection from selector (during combat)
+        if self.imbueMH.pendingImbueData and self.imbueMH.pendingSpellId then
+            db.defaultMainhandImbue = self.imbueMH.pendingSpellId
+            self.imbueMH:SetImbue(self.imbueMH.pendingSpellId, self.imbueMH.pendingImbueData)
+            self.imbueMH.pendingImbueData = nil
+            self.imbueMH.pendingSpellId = nil
+        end
+    end
+    if self.imbueOH then
+        if self.imbueOH.ApplyPendingAttributes then
+            self.imbueOH:ApplyPendingAttributes()
+        end
+        -- Handle pending imbue selection from selector (during combat)
+        if self.imbueOH.pendingImbueData and self.imbueOH.pendingSpellId then
+            db.defaultOffhandImbue = self.imbueOH.pendingSpellId
+            self.imbueOH:SetImbue(self.imbueOH.pendingSpellId, self.imbueOH.pendingImbueData)
+            self.imbueOH.pendingImbueData = nil
+            self.imbueOH.pendingSpellId = nil
+        end
+    end
+
+    -- Process pending Shield tile attributes AND selector data
+    if self.shieldTile then
+        if self.shieldTile.ApplyPendingAttributes then
+            self.shieldTile:ApplyPendingAttributes()
+        end
+        -- Handle pending shield selection from selector (during combat)
+        if self.shieldTile.pendingShieldData and self.shieldTile.pendingSpellId then
+            db.defaultShield = self.shieldTile.pendingSpellId
+            self.shieldTile:SetShield(self.shieldTile.pendingSpellId, self.shieldTile.pendingShieldData)
+            self.shieldTile.pendingShieldData = nil
+            self.shieldTile.pendingSpellId = nil
+        end
+    end
+
+    -- Handle pending visibility update
+    if self.pendingExtrasUpdate then
+        self.pendingExtrasUpdate = false
+        self:UpdateExtrasVisibility()
+        self:UpdateLayout()
+    end
+end
+
+--- Update extra tile timers (called from OnUpdate)
+function TotemBar:UpdateExtraTimers()
+    -- Update Imbue status
+    if self.imbueMH and self.imbueMH:IsShown() and self.imbueMH.UpdateStatus then
+        self.imbueMH:UpdateStatus()
+    end
+    if self.imbueOH and self.imbueOH:IsShown() and self.imbueOH.UpdateStatus then
+        self.imbueOH:UpdateStatus()
+    end
+
+    -- Update Shield status
+    if self.shieldTile and self.shieldTile:IsShown() and self.shieldTile.UpdateStatus then
+        self.shieldTile:UpdateStatus()
+    end
+
+    -- Update Call cooldowns
+    if self.callTiles then
+        for _, tile in ipairs(self.callTiles) do
+            if tile:IsShown() and tile.UpdateCooldown then
+                tile:UpdateCooldown()
+            end
+        end
+    end
+end
+
+--- Get the total number of visible extra tiles
+---@return number count
+function TotemBar:GetVisibleExtraTileCount()
+    local count = 0
+
+    -- Count visible call tiles
+    if self.callTiles then
+        for _, tile in ipairs(self.callTiles) do
+            if tile:IsShown() then
+                count = count + 1
+            end
+        end
+    end
+
+    -- Count imbue tiles
+    if self.imbueMH and self.imbueMH:IsShown() then
+        count = count + 1
+    end
+    if self.imbueOH and self.imbueOH:IsShown() then
+        count = count + 1
+    end
+
+    -- Count shield tile
+    if self.shieldTile and self.shieldTile:IsShown() then
+        count = count + 1
+    end
+
+    return count
+end
+
+--- Collect all visible extra tiles in order
+---@return table extraTiles Array of visible extra tile references
+function TotemBar:GetVisibleExtraTiles()
+    local tiles = {}
+
+    -- Add visible call tiles
+    if self.callTiles then
+        for _, tile in ipairs(self.callTiles) do
+            if tile:IsShown() then
+                table.insert(tiles, tile)
+            end
+        end
+    end
+
+    -- Add imbue tiles
+    if self.imbueMH and self.imbueMH:IsShown() then
+        table.insert(tiles, self.imbueMH)
+    end
+    if self.imbueOH and self.imbueOH:IsShown() then
+        table.insert(tiles, self.imbueOH)
+    end
+
+    -- Add shield tile
+    if self.shieldTile and self.shieldTile:IsShown() then
+        table.insert(tiles, self.shieldTile)
+    end
+
+    return tiles
 end
 
 return TotemBar

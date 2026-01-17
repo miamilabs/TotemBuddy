@@ -9,14 +9,18 @@ local _EventHandler = EventHandler.private
 
 -- Module references (resolved on first use)
 local SpellScanner = nil
+local ExtrasScanner = nil
 local TotemBar = nil
 local TotemSelector = nil
 local TotemSets = nil
+local ImbueSelector = nil
+local ShieldSelector = nil
 
 -- Throttling state
 _EventHandler.cooldownDebounce = nil
 _EventHandler.lastCooldownUpdate = 0
 _EventHandler.pendingRefresh = false
+_EventHandler.auraDebounce = nil
 
 --- Safe event handler wrapper (prevents errors from breaking addon)
 ---@param handlerName string Name of the handler for error logging
@@ -38,6 +42,9 @@ local function GetModules()
     if not SpellScanner then
         SpellScanner = TotemBuddyLoader:ImportModule("SpellScanner")
     end
+    if not ExtrasScanner then
+        ExtrasScanner = TotemBuddyLoader:ImportModule("ExtrasScanner")
+    end
     if not TotemBar then
         TotemBar = TotemBuddyLoader:ImportModule("TotemBar")
     end
@@ -46,6 +53,12 @@ local function GetModules()
     end
     if not TotemSets then
         TotemSets = TotemBuddyLoader:ImportModule("TotemSets")
+    end
+    if not ImbueSelector then
+        ImbueSelector = TotemBuddyLoader:ImportModule("ImbueSelector")
+    end
+    if not ShieldSelector then
+        ShieldSelector = TotemBuddyLoader:ImportModule("ShieldSelector")
     end
 end
 
@@ -91,6 +104,20 @@ function EventHandler:RegisterEvents()
     TotemBuddy:RegisterEvent("PLAYER_LEVEL_UP", SafeHandler("PLAYER_LEVEL_UP", function()
         _EventHandler:OnLevelUp()
     end))
+
+    -- Inventory changes (for offhand weapon detection)
+    TotemBuddy:RegisterEvent("UNIT_INVENTORY_CHANGED", SafeHandler("UNIT_INVENTORY_CHANGED", function(_, unit)
+        if unit == "player" then
+            _EventHandler:OnInventoryChanged()
+        end
+    end))
+
+    -- Aura changes (for shield status tracking)
+    TotemBuddy:RegisterEvent("UNIT_AURA", SafeHandler("UNIT_AURA", function(_, unit)
+        if unit == "player" then
+            _EventHandler:OnPlayerAuraChanged()
+        end
+    end))
 end
 
 --- Called when player enters the world (login, reload, zone change)
@@ -104,12 +131,31 @@ function _EventHandler:OnPlayerEnteringWorld()
             SpellScanner:ScanTotems()
         end
 
+        -- Scan extras (Call spells, Imbues, Shields)
+        if ExtrasScanner then
+            ExtrasScanner:ScanAllExtras()
+        end
+
         -- Refresh UI with saved totems
         if TotemBar then
             if not TotemBar.frame then
                 TotemBar:Create()
             end
             TotemBar:RefreshAllTiles()
+
+            -- Create and refresh extras
+            if TotemBar.CreateExtraTiles then
+                TotemBar:CreateExtraTiles()
+            end
+            if TotemBar.RefreshAllExtras then
+                TotemBar:RefreshAllExtras()
+            end
+            if TotemBar.UpdateExtrasVisibility then
+                TotemBar:UpdateExtrasVisibility()
+            end
+            if TotemBar.UpdateLayout then
+                TotemBar:UpdateLayout()
+            end
 
             -- Show if enabled
             if TotemBuddy.db.profile.enabled then
@@ -143,6 +189,14 @@ function _EventHandler:OnEnterCombat()
         TotemSelector:Hide()
     end
 
+    -- Hide extra selectors
+    if ImbueSelector and ImbueSelector.Hide then
+        ImbueSelector:Hide()
+    end
+    if ShieldSelector and ShieldSelector.Hide then
+        ShieldSelector:Hide()
+    end
+
     -- Lock the totem bar during combat
     if TotemBar and TotemBar.SetLocked then
         TotemBar:SetLocked(true)
@@ -165,6 +219,22 @@ function _EventHandler:OnLeaveCombat()
 
     -- Process any pending updates
     _EventHandler:ProcessPendingUpdates()
+
+    -- Process pending extras updates
+    if TotemBar and TotemBar.ProcessPendingExtras then
+        TotemBar:ProcessPendingExtras()
+    end
+
+    -- Update extras visibility if layout change was requested
+    if TotemBar and TotemBar.pendingExtrasUpdate then
+        TotemBar.pendingExtrasUpdate = false
+        if TotemBar.UpdateExtrasVisibility then
+            TotemBar:UpdateExtrasVisibility()
+        end
+        if TotemBar.UpdateLayout then
+            TotemBar:UpdateLayout()
+        end
+    end
 end
 
 --- Called when a new spell is learned
@@ -240,6 +310,39 @@ function _EventHandler:OnLevelUp()
     if SpellScanner then
         SpellScanner:ScanTotems()
     end
+end
+
+--- Called when player inventory changes (for offhand weapon detection)
+function _EventHandler:OnInventoryChanged()
+    GetModules()
+
+    -- Update offhand imbue tile visibility
+    if TotemBar and TotemBar.UpdateExtrasVisibility then
+        -- Only update if not in combat
+        if not InCombatLockdown() then
+            TotemBar:UpdateExtrasVisibility()
+            TotemBar:UpdateLayout()
+        else
+            -- Queue for after combat
+            TotemBar.pendingExtrasUpdate = true
+        end
+    end
+end
+
+--- Called when player aura changes (for shield status tracking)
+function _EventHandler:OnPlayerAuraChanged()
+    -- Debounce rapid UNIT_AURA events (fires very frequently in combat)
+    if _EventHandler.auraDebounce then return end
+
+    _EventHandler.auraDebounce = C_Timer.NewTimer(0.08, function()
+        _EventHandler.auraDebounce = nil
+        GetModules()
+
+        -- Update shield tile status display
+        if TotemBar and TotemBar.shieldTile and TotemBar.shieldTile.UpdateStatus then
+            TotemBar.shieldTile:UpdateStatus()
+        end
+    end)
 end
 
 --- Process pending updates (called after leaving combat)

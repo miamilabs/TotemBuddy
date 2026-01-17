@@ -102,6 +102,45 @@ function OptionsDefaults:GetDefaults()
             -- Selector Behavior (v2.0)
             castOnSelect = false,         -- Cast totem immediately when selected (out of combat)
             castOnSelectInCombat = false, -- In combat: queue default change (true) or block (false)
+
+            -- ===========================================
+            -- EXTRA FEATURES (v2.1)
+            -- ===========================================
+
+            -- Feature Toggles
+            showCallOfTotems = true,      -- Show Call of the Elements/Ancestors/Spirits buttons
+            showWeaponImbues = true,      -- Show Weapon Imbue buttons (Mainhand/Offhand)
+            showShields = true,           -- Show Shield button (Lightning/Water/Earth Shield)
+
+            -- Call of Totems defaults
+            defaultCallSpell = nil,       -- nil = use first available
+
+            -- Weapon Imbue defaults
+            defaultMainhandImbue = nil,   -- nil = use first available
+            defaultOffhandImbue = nil,    -- nil = use first available
+            showImbueStatus = true,       -- Show active/duration indicator
+            imbueModifierOverrides = {
+                mainhand = { default = nil, shift = nil, ctrl = nil, alt = nil },
+                offhand = { default = nil, shift = nil, ctrl = nil, alt = nil },
+            },
+
+            -- Shield defaults
+            defaultShield = nil,          -- nil = use first available (Lightning Shield)
+            showShieldStatus = true,      -- Show active/charges indicator
+
+            -- Earth Shield Targeting (v2.2)
+            -- Configure modifier-based targeting for Earth Shield
+            -- Options: "none", "player", "focus", "party1"-"party5"
+            earthShieldTargeting = {
+                noModifier = "player",    -- Default: cast on self
+                shift = "focus",          -- Shift+click: cast on focus
+                ctrl = "none",            -- Ctrl+click: disabled
+                alt = "party1",           -- Alt+click: cast on party1
+            },
+
+            -- Extra tiles layout
+            extraTilesPosition = "after", -- "after" (after totem tiles) or "before"
+            showExtraTilesSeparator = false, -- Show visual separator between totems and extras
         },
         char = {
             -- Character-specific settings (currently unused)

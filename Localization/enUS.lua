@@ -133,6 +133,25 @@ L["All modifier overrides cleared."] = "All modifier overrides cleared."
 L["None (disabled)"] = "None (disabled)"
 L["Cannot update macros in combat. Changes will apply after combat ends."] = "Cannot update macros in combat. Changes will apply after combat ends."
 
+-- Earth Shield Targeting
+L["Earth Shield Targeting"] = "Earth Shield Targeting"
+L["Configure which target Earth Shield casts on when holding modifier keys. Changes apply after leaving combat."] = "Configure which target Earth Shield casts on when holding modifier keys. Changes apply after leaving combat."
+L["No Modifier (Default)"] = "No Modifier (Default)"
+L["Shift+Click"] = "Shift+Click"
+L["Ctrl+Click"] = "Ctrl+Click"
+L["Alt+Click"] = "Alt+Click"
+L["Target for Earth Shield when %s is used"] = "Target for Earth Shield when %s is used"
+L["Disabled"] = "Disabled"
+L["Self"] = "Self"
+L["Focus"] = "Focus"
+L["Party"] = "Party"
+L["Party 1"] = "Party 1"
+L["Party 2"] = "Party 2"
+L["Party 3"] = "Party 3"
+L["Party 4"] = "Party 4"
+L["Party 5"] = "Party 5"
+L["Click"] = "Click"
+
 -- Profiles
 L["Profiles"] = "Profiles"
 
@@ -156,6 +175,42 @@ L["Click to set as default"] = "Click to set as default"
 L["Not yet learned"] = "Not yet learned"
 L["Requires level %d"] = "Requires level %d"
 L["Visit a trainer to learn"] = "Visit a trainer to learn"
+
+-- Extra Features Section
+L["Extra Features"] = "Extra Features"
+L["Show Call of Totems"] = "Show Call of Totems"
+L["Show Call of Elements, Call of the Ancestors, and Call of the Spirits buttons"] = "Show Call of Elements, Call of the Ancestors, and Call of the Spirits buttons"
+L["Show Weapon Imbues"] = "Show Weapon Imbues"
+L["Show weapon imbue tiles for mainhand and offhand"] = "Show weapon imbue tiles for mainhand and offhand"
+L["Show Shields"] = "Show Shields"
+L["Show shield tile for Lightning Shield, Water Shield, and Earth Shield"] = "Show shield tile for Lightning Shield, Water Shield, and Earth Shield"
+L["Changes will apply after combat."] = "Changes will apply after combat."
+
+-- Imbue/Shield Status
+L["Active"] = "Active"
+L["Not active"] = "Not active"
+L["charges"] = "charges"
+L["Active: %s remaining"] = "Active: %s remaining"
+L["Mainhand"] = "Mainhand"
+L["Offhand"] = "Offhand"
+L["Applies to: %s"] = "Applies to: %s"
+L["Right-click to select imbue"] = "Right-click to select imbue"
+L["Right-click to select shield"] = "Right-click to select shield"
+L["Click to set for %s"] = "Click to set for %s"
+L["Can be cast on friendly targets"] = "Can be cast on friendly targets"
+L["Casts on mouseover target or self"] = "Casts on mouseover target or self"
+
+-- Selector Tooltips
+L["Click to set as default"] = "Click to set as default"
+L["%s will be set as default when leaving combat."] = "%s will be set as default when leaving combat."
+L["Cannot open selector during combat."] = "Cannot open selector during combat."
+
+-- GeneralTab Extra Features
+L["Display button(s) for Call of the Elements/Ancestors/Spirits spells"] = "Display button(s) for Call of the Elements/Ancestors/Spirits spells"
+L["Display buttons for weapon enchantments (Rockbiter, Flametongue, Windfury, etc.)"] = "Display buttons for weapon enchantments (Rockbiter, Flametongue, Windfury, etc.)"
+L["Display button for Lightning Shield, Water Shield, or Earth Shield"] = "Display button for Lightning Shield, Water Shield, or Earth Shield"
+L["Note: Features are disabled if no spells are known. Use 'Rescan Totems' after learning new spells."] = "Note: Features are disabled if no spells are known. Use 'Rescan Totems' after learning new spells."
+L["Rescan your spellbook for known totems, imbues, shields, and call spells"] = "Rescan your spellbook for known totems, imbues, shields, and call spells"
 
 -- Make globally accessible with fallback metatable
 setmetatable(L, {
