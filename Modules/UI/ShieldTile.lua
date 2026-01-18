@@ -389,6 +389,14 @@ function _ShieldTile.OnCLEUEvent(timestamp, subevent, sourceGUID, destGUID, dest
     local isEarthShield = EARTH_SHIELD_SPELL_IDS[spellId] or (spellName == earthShieldName)
     if not isEarthShield then return end
 
+    -- DISABLED: Party member Earth Shield tracking
+    -- Only track Earth Shield on self (player) when trackEarthShieldOnTargets is false
+    local trackOnTargets = TotemBuddy.db and TotemBuddy.db.profile.trackEarthShieldOnTargets
+    if not trackOnTargets and destGUID ~= playerGUID then
+        DebugPrint("CLEU: Skipping party ES tracking (disabled) - dest=" .. tostring(destName))
+        return
+    end
+
     DebugPrint("CLEU: Earth Shield detected! subevent=" .. tostring(subevent))
 
     if subevent == "SPELL_AURA_APPLIED" or subevent == "SPELL_AURA_REFRESH" then
@@ -438,6 +446,19 @@ function _ShieldTile.OnSpellcastSent(target, castGUID, spellID, spellName)
     local earthShieldName = GetEarthShieldName()
     local isEarthShield = EARTH_SHIELD_SPELL_IDS[spellID] or (not spellID and spellName == earthShieldName)
     if not isEarthShield then return end
+
+    -- DISABLED: Party member Earth Shield tracking
+    -- Skip tracking cast on others when party tracking is disabled
+    local trackOnTargets = TotemBuddy.db and TotemBuddy.db.profile.trackEarthShieldOnTargets
+    local playerName = UnitName("player")
+    if not trackOnTargets then
+        -- Only track self-cast Earth Shield
+        local isSelfCast = (not target or target == "" or target == "player" or target == playerName)
+        if not isSelfCast then
+            DebugPrint("SPELLCAST_SENT: Skipping party ES cast tracking (disabled) - target=" .. tostring(target))
+            return
+        end
+    end
 
     DebugPrint("SPELLCAST_SENT: spellID=" .. tostring(spellID) .. " spellName=" .. tostring(spellName) .. " target=" .. tostring(target))
 
@@ -627,6 +648,13 @@ end
 --- Handle UNIT_AURA for Earth Shield target - updates charges and duration
 ---@param unit string The unit that had an aura change
 function _ShieldTile.OnTargetAuraChanged(unit)
+    -- DISABLED: Party member Earth Shield tracking
+    -- Skip if party tracking is disabled and unit is not player
+    local trackOnTargets = TotemBuddy.db and TotemBuddy.db.profile.trackEarthShieldOnTargets
+    if not trackOnTargets and unit ~= "player" then
+        return
+    end
+
     -- Only process if we have a tracked Earth Shield target
     if not _ShieldTile.earthShieldTarget then
         return
@@ -796,6 +824,39 @@ end
 function _ShieldTile.ScanAllUnitsForEarthShield()
     local earthShieldName = GetEarthShieldName()
 
+    -- DISABLED: Party member Earth Shield tracking
+    -- Only scan player when trackEarthShieldOnTargets is false
+    local trackOnTargets = TotemBuddy.db and TotemBuddy.db.profile.trackEarthShieldOnTargets
+    if not trackOnTargets then
+        -- Only check player for self-shield
+        local unitsToCheck = { "player" }
+        local checkedGUIDs = {}
+        for _, unit in ipairs(unitsToCheck) do
+            if UnitExists(unit) then
+                local unitGUID = UnitGUID(unit)
+                if unitGUID and not checkedGUIDs[unitGUID] then
+                    checkedGUIDs[unitGUID] = true
+                    for i = 1, 40 do
+                        local name, _, count, _, duration, expirationTime, source, _, _, spellId = UnitBuff(unit, i)
+                        if not name then break end
+                        local isEarthShield = (spellId and EARTH_SHIELD_SPELL_IDS[spellId]) or (not spellId and name == earthShieldName)
+                        if isEarthShield and (source == nil or source == "player" or UnitIsUnit(source, "player")) then
+                            _ShieldTile.earthShieldTarget = {
+                                guid = unitGUID,
+                                name = UnitName(unit),
+                                charges = count or 0,
+                                endTime = expirationTime or (GetTime() + EARTH_SHIELD_DEFAULT_DURATION),
+                            }
+                            return
+                        end
+                    end
+                end
+            end
+        end
+        _ShieldTile.earthShieldTarget = nil
+        return
+    end
+
     -- Build list of units to check (target and focus first for better source info)
     local unitsToCheck = { "target", "focus", "player" }
 
@@ -865,6 +926,13 @@ end
 --- Called when group roster changes
 ---@param tile Button The tile button (optional)
 function _ShieldTile.OnGroupRosterUpdate(tile)
+    -- DISABLED: Party member Earth Shield tracking
+    -- Skip roster update handling when party tracking is disabled
+    local trackOnTargets = TotemBuddy.db and TotemBuddy.db.profile.trackEarthShieldOnTargets
+    if not trackOnTargets then
+        return
+    end
+
     -- Re-scan for Earth Shield when roster changes
     -- (target might have left group)
     C_Timer.After(0.5, function()
@@ -1116,6 +1184,16 @@ function _ShieldTile.OnRightClick(tile)
     if InCombatLockdown() then
         TotemBuddy:Print(L["Cannot open selector during combat."])
         return
+    end
+
+    -- Check if selector is locked and right-click is disabled
+    local lockSelector = TotemBuddy.db.profile.lockSelector
+    local rightClickEnabled = TotemBuddy.db.profile.selectorRightClickEnabled
+    if lockSelector and not rightClickEnabled then
+        -- Right-click disabled when locked, only Shift+hover works
+        if not IsShiftKeyDown() then
+            return
+        end
     end
 
     if not ShieldSelector then

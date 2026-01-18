@@ -414,10 +414,14 @@ end
 --- Handle right-click (opens selector)
 ---@param tile Button The tile button
 function _TotemTile.OnRightClick(tile)
-    -- Check if selector is locked (requires Shift to open)
+    -- Check if selector is locked and right-click is disabled
     local selectorLocked = TotemBuddy.db.profile.lockSelector
-    if selectorLocked and not IsShiftKeyDown() then
-        return  -- Selector locked and shift not held, don't show
+    local rightClickEnabled = TotemBuddy.db.profile.selectorRightClickEnabled
+    if selectorLocked and not rightClickEnabled then
+        -- Right-click disabled when locked, only Shift+hover works
+        if not IsShiftKeyDown() then
+            return
+        end
     end
 
     -- Check combat setting

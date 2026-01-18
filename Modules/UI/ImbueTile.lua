@@ -321,6 +321,14 @@ function _ImbueTile.GetActiveEnchantInfo(tile)
     local hasMainHandEnchant, mainHandExpiration, mainHandCharges, mainHandId,
           hasOffHandEnchant, offHandExpiration, offHandCharges, offHandId = GetWeaponEnchantInfo()
 
+    -- Debug logging if enabled
+    if TotemBuddy.db and TotemBuddy.db.profile and TotemBuddy.db.profile.debugImbues then
+        print(string.format("[TotemBuddy] GetWeaponEnchantInfo: MH=%s/%s/%s OH=%s/%s/%s (tile=%s)",
+            tostring(hasMainHandEnchant), tostring(mainHandExpiration), tostring(mainHandId),
+            tostring(hasOffHandEnchant), tostring(offHandExpiration), tostring(offHandId),
+            tostring(tile.slot)))
+    end
+
     local hasEnchant, expiration, enchantId
     if tile.slot == SLOT_OFFHAND then
         hasEnchant = hasOffHandEnchant
@@ -332,11 +340,23 @@ function _ImbueTile.GetActiveEnchantInfo(tile)
         enchantId = mainHandId
     end
 
-    if not hasEnchant or not expiration then
+    -- hasEnchant is the authoritative indicator - don't require expiration
+    if not hasEnchant then
         return false, nil, nil, nil, nil
     end
 
-    local remainingSeconds = expiration / 1000
+    -- Normalize expiration units: some clients return ms, others return seconds
+    local remainingSeconds = nil
+    if expiration and expiration > 0 then
+        -- If value > 100000, treat as milliseconds (> ~1.6 minutes in ms)
+        -- Otherwise treat as seconds (imbues last 30 min = 1800 seconds max)
+        if expiration > 100000 then
+            remainingSeconds = expiration / 1000
+        else
+            remainingSeconds = expiration
+        end
+    end
+
     local spellId = nil
     local imbueType = nil
 
@@ -345,8 +365,10 @@ function _ImbueTile.GetActiveEnchantInfo(tile)
         spellId = WeaponEnchants:GetSpellIdForEnchant(enchantId)
         imbueType = WeaponEnchants:GetImbueTypeName(enchantId)
 
-        -- Update max duration tracking
-        WeaponEnchants:UpdateMaxDuration(enchantId, remainingSeconds)
+        -- Update max duration tracking (only if we have valid duration)
+        if remainingSeconds then
+            WeaponEnchants:UpdateMaxDuration(enchantId, remainingSeconds)
+        end
     end
 
     return true, remainingSeconds, enchantId, spellId, imbueType
@@ -408,75 +430,85 @@ function _ImbueTile.UpdateStatus(tile)
     local hasEnchant, remainingSeconds, enchantId, identifiedSpellId, imbueType =
         _ImbueTile.GetActiveEnchantInfo(tile)
 
-    if hasEnchant and remainingSeconds then
+    -- hasEnchant is authoritative - show active state even if duration unavailable
+    if hasEnchant then
         -- Enchant is active
 
-        -- Show active glow
+        -- Show active glow (regardless of duration availability)
         if TotemBuddy.db.profile.showActiveGlow then
             tile.activeGlow:Show()
         end
 
-        -- Show duration text
-        if TotemBuddy.db.profile.showDurationText and remainingSeconds > 0 then
-            tile.durationText:SetText(FormatTime(remainingSeconds))
-            tile.durationText:Show()
-        else
-            tile.durationText:Hide()
-        end
-
-        -- Show duration bar with accurate max duration
-        local totalDuration = 30 * 60  -- Default 30 minutes
-        if WeaponEnchants and enchantId and WeaponEnchants.GetMaxDuration then
-            totalDuration = WeaponEnchants:GetMaxDuration(enchantId)
-        end
-        -- Guard against zero or nil duration
-        if not totalDuration or totalDuration <= 0 then
-            totalDuration = 30 * 60
-        end
-
-        if TotemBuddy.db.profile.showDurationBar and remainingSeconds > 0 then
-            local progress = math.min(remainingSeconds / totalDuration, 1.0)
-            local tileWidth = tile:GetWidth() - 4
-            local barWidth = tileWidth * progress
-            if barWidth < 1 then barWidth = 1 end
-
-            tile.durationBar:SetWidth(barWidth)
-            tile.durationBar:Show()
-            tile.durationBarBG:Show()
-        else
-            tile.durationBar:Hide()
-            tile.durationBarBG:Hide()
-        end
-
-        -- Normal icon
+        -- Normal icon (not desaturated)
         tile.icon:SetDesaturated(false)
-
-        -- Combat glow warning: show when in combat and enchant is expiring soon
-        local showCombatGlow = TotemBuddy.db.profile.showImbueCombatGlow
-        if showCombatGlow == nil then showCombatGlow = true end  -- Default to true
-
-        if showCombatGlow then
-            local combatWarningThreshold = TotemBuddy.db.profile.imbueWarningThreshold or 60
-            local inCombat = InCombatLockdown() or UnitAffectingCombat("player")
-
-            if inCombat and remainingSeconds < combatWarningThreshold and remainingSeconds > 0 then
-                _ImbueTile.ShowCombatGlow(tile)
-                -- Trigger audio warning via WarningManager
-                local WarningManager = TotemBuddyLoader:ImportModule("WarningManager")
-                if WarningManager then
-                    WarningManager:ImbueExpiring(tile.slot, remainingSeconds)
-                end
-            else
-                _ImbueTile.HideCombatGlow(tile)
-            end
-        else
-            _ImbueTile.HideCombatGlow(tile)
-        end
 
         -- Store identified enchant info on tile for tooltip enhancement
         tile.activeEnchantId = enchantId
         tile.activeEnchantSpellId = identifiedSpellId
         tile.activeEnchantType = imbueType
+
+        -- Duration-dependent display (only if we have valid remainingSeconds)
+        if remainingSeconds and remainingSeconds > 0 then
+            -- Show duration text
+            if TotemBuddy.db.profile.showDurationText then
+                tile.durationText:SetText(FormatTime(remainingSeconds))
+                tile.durationText:Show()
+            else
+                tile.durationText:Hide()
+            end
+
+            -- Show duration bar with accurate max duration
+            local totalDuration = 30 * 60  -- Default 30 minutes
+            if WeaponEnchants and enchantId and WeaponEnchants.GetMaxDuration then
+                totalDuration = WeaponEnchants:GetMaxDuration(enchantId)
+            end
+            -- Guard against zero or nil duration
+            if not totalDuration or totalDuration <= 0 then
+                totalDuration = 30 * 60
+            end
+
+            if TotemBuddy.db.profile.showDurationBar then
+                local progress = math.min(remainingSeconds / totalDuration, 1.0)
+                local tileWidth = tile:GetWidth() - 4
+                local barWidth = tileWidth * progress
+                if barWidth < 1 then barWidth = 1 end
+
+                tile.durationBar:SetWidth(barWidth)
+                tile.durationBar:Show()
+                tile.durationBarBG:Show()
+            else
+                tile.durationBar:Hide()
+                tile.durationBarBG:Hide()
+            end
+
+            -- Combat glow warning: show when in combat and enchant is expiring soon
+            local showCombatGlow = TotemBuddy.db.profile.showImbueCombatGlow
+            if showCombatGlow == nil then showCombatGlow = true end  -- Default to true
+
+            if showCombatGlow then
+                local combatWarningThreshold = TotemBuddy.db.profile.imbueWarningThreshold or 60
+                local inCombat = InCombatLockdown() or UnitAffectingCombat("player")
+
+                if inCombat and remainingSeconds < combatWarningThreshold then
+                    _ImbueTile.ShowCombatGlow(tile)
+                    -- Trigger audio warning via WarningManager
+                    local WarningManager = TotemBuddyLoader:ImportModule("WarningManager")
+                    if WarningManager then
+                        WarningManager:ImbueExpiring(tile.slot, remainingSeconds)
+                    end
+                else
+                    _ImbueTile.HideCombatGlow(tile)
+                end
+            else
+                _ImbueTile.HideCombatGlow(tile)
+            end
+        else
+            -- Enchant active but duration unknown - hide duration-dependent elements
+            tile.durationText:Hide()
+            tile.durationBar:Hide()
+            tile.durationBarBG:Hide()
+            _ImbueTile.HideCombatGlow(tile)
+        end
     else
         -- No enchant active
         tile.activeGlow:Hide()
@@ -596,6 +628,16 @@ function _ImbueTile.OnRightClick(tile)
     if InCombatLockdown() then
         TotemBuddy:Print(L["Cannot open selector during combat."])
         return
+    end
+
+    -- Check if selector is locked and right-click is disabled
+    local lockSelector = TotemBuddy.db.profile.lockSelector
+    local rightClickEnabled = TotemBuddy.db.profile.selectorRightClickEnabled
+    if lockSelector and not rightClickEnabled then
+        -- Right-click disabled when locked, only Shift+hover works
+        if not IsShiftKeyDown() then
+            return
+        end
     end
 
     if not ImbueSelector then

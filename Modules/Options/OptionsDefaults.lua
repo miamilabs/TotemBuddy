@@ -98,6 +98,7 @@ function OptionsDefaults:GetDefaults()
             selectorScale = 1.0,
             showSelectorInCombat = false,  -- Show selector popup while in combat
             lockSelector = false,  -- Lock selector: only opens with Shift+hover
+            selectorRightClickEnabled = true,  -- Right-click opens selector when lockSelector is active
 
             -- Selector Behavior (v2.0)
             castOnSelect = false,         -- Cast totem immediately when selected (out of combat)
@@ -121,6 +122,7 @@ function OptionsDefaults:GetDefaults()
             showImbueStatus = true,       -- Show active/duration indicator
             imbueWarningThreshold = 60,   -- Seconds before "expiring soon" warning (combat glow)
             showImbueCombatGlow = true,   -- Show pulsing glow when imbue expiring in combat
+            debugImbues = false,          -- Debug: log GetWeaponEnchantInfo() values to chat
             imbueModifierOverrides = {
                 mainhand = { default = nil, shift = nil, ctrl = nil, alt = nil },
                 offhand = { default = nil, shift = nil, ctrl = nil, alt = nil },
@@ -129,8 +131,8 @@ function OptionsDefaults:GetDefaults()
             -- Shield defaults
             defaultShield = nil,          -- nil = use first available (Lightning Shield)
             showShieldStatus = true,      -- Show active/charges indicator
-            trackEarthShieldOnTargets = true, -- Track Earth Shield cast on party/raid members
-            showEarthShieldTargetName = true, -- Show target name on shield tile when Earth Shield is on others
+            trackEarthShieldOnTargets = false, -- DISABLED: Track Earth Shield cast on party/raid members (only tracking self shields)
+            showEarthShieldTargetName = false, -- DISABLED: Show target name on shield tile when Earth Shield is on others
 
             -- Earth Shield Targeting (v2.2)
             -- Configure modifier-based targeting for Earth Shield

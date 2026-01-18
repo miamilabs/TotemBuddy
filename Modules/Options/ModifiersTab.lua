@@ -68,22 +68,24 @@ function ModifiersTab:GetOptions()
             airCtrl = self:CreateModifierDropdown(4, "ctrl", L["Ctrl"], 42),
             airAlt = self:CreateModifierDropdown(4, "alt", L["Alt"], 43),
 
-            -- Earth Shield Targeting Section
+            -- Earth Shield Targeting Section (HIDDEN - feature disabled)
             dividerEarthShield = {
                 type = "header",
                 name = "|cFF33FF33" .. L["Earth Shield Targeting"] .. "|r",
                 order = 50,
+                hidden = true,
             },
             earthShieldDesc = {
                 type = "description",
                 name = L["Configure which target Earth Shield casts on when holding modifier keys. Changes apply after leaving combat."],
                 order = 51,
                 fontSize = "medium",
+                hidden = true,
             },
-            earthShieldDefault = self:CreateTargetDropdown("noModifier", L["No Modifier (Default)"], 52),
-            earthShieldShift = self:CreateTargetDropdown("shift", L["Shift+Click"], 53),
-            earthShieldCtrl = self:CreateTargetDropdown("ctrl", L["Ctrl+Click"], 54),
-            earthShieldAlt = self:CreateTargetDropdown("alt", L["Alt+Click"], 55),
+            earthShieldDefault = self:CreateTargetDropdownHidden("noModifier", L["No Modifier (Default)"], 52),
+            earthShieldShift = self:CreateTargetDropdownHidden("shift", L["Shift+Click"], 53),
+            earthShieldCtrl = self:CreateTargetDropdownHidden("ctrl", L["Ctrl+Click"], 54),
+            earthShieldAlt = self:CreateTargetDropdownHidden("alt", L["Alt+Click"], 55),
 
             dividerActions = {
                 type = "header",
@@ -315,6 +317,17 @@ function ModifiersTab:CreateTargetDropdown(key, label, order)
             self:RebuildShieldMacro()
         end,
     }
+end
+
+--- Create a hidden dropdown for selecting Earth Shield target
+---@param key string The settings key ("noModifier", "shift", "ctrl", "alt")
+---@param label string Display name for the dropdown
+---@param order number Display order
+---@return table option The AceConfig option table (hidden)
+function ModifiersTab:CreateTargetDropdownHidden(key, label, order)
+    local dropdown = self:CreateTargetDropdown(key, label, order)
+    dropdown.hidden = true
+    return dropdown
 end
 
 --- Rebuild the Earth Shield macro after settings change

@@ -237,6 +237,19 @@ function GeneralTab:GetOptions()
                     TotemBuddy.db.profile.lockSelector = value
                 end,
             },
+            selectorRightClickEnabled = {
+                type = "toggle",
+                name = L["Right-Click Opens Selector"],
+                desc = L["When Lock Selector is enabled, right-clicking still opens the selector menu"],
+                order = 20.05,
+                disabled = function() return not TotemBuddy.db.profile.lockSelector end,
+                get = function()
+                    return TotemBuddy.db.profile.selectorRightClickEnabled
+                end,
+                set = function(_, value)
+                    TotemBuddy.db.profile.selectorRightClickEnabled = value
+                end,
+            },
             selectorHint = {
                 type = "description",
                 name = "|cff888888" .. L["Tip: Right-click a totem tile to quickly open the selector."] .. "|r",
@@ -379,6 +392,9 @@ function GeneralTab:GetOptions()
                     return not TotemBuddy.HasAnyShieldSpells
                 end,
             },
+            -- DISABLED: Party member Earth Shield tracking options
+            -- Uncomment these blocks to re-enable party ES tracking UI options
+            --[[
             trackEarthShieldOnTargets = {
                 type = "toggle",
                 name = L["Track Earth Shield on Targets"],
@@ -419,6 +435,7 @@ function GeneralTab:GetOptions()
                     return not TotemBuddy.db.profile.showShields or not TotemBuddy.db.profile.trackEarthShieldOnTargets
                 end,
             },
+            --]]
             extrasHint = {
                 type = "description",
                 name = "|cff888888" .. L["Note: Features are disabled if no spells are known. Use 'Rescan Totems' after learning new spells."] .. "|r",

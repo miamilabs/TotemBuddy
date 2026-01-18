@@ -321,7 +321,8 @@ function _EventHandler:OnPlayerEnteringWorld()
             end
         end
 
-        -- Scan for existing Earth Shield on party/raid members
+        -- Scan for existing Earth Shield (self-shield only when party tracking is disabled)
+        -- Note: ScanAllUnitsForEarthShield respects trackEarthShieldOnTargets setting
         if ShieldTile and ShieldTile.private and ShieldTile.private.ScanAllUnitsForEarthShield then
             ShieldTile.private.ScanAllUnitsForEarthShield()
             -- Update display if found
@@ -531,6 +532,11 @@ end
 function _EventHandler:OnEarthShieldTargetAuraChanged(unit)
     -- Skip player unit (handled separately by OnPlayerAuraChanged)
     if unit == "player" then return end
+
+    -- DISABLED: Party member Earth Shield tracking
+    -- Skip when party tracking is disabled
+    local trackOnTargets = TotemBuddy.db and TotemBuddy.db.profile.trackEarthShieldOnTargets
+    if not trackOnTargets then return end
 
     GetModules()
 
