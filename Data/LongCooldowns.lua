@@ -86,7 +86,7 @@ DB.Cooldowns = {
         talent = "Elemental",
     },
 
-    -- WotLK additions (will be filtered out in TBC)
+    -- WotLK Talent Cooldowns
     {
         name = "Feral Spirit",
         spellId = 51533,
@@ -95,7 +95,6 @@ DB.Cooldowns = {
         baseCooldown = 180,  -- 3 minutes
         description = "Summon two Spirit Wolves",
         talent = "Enhancement",
-        wotlkOnly = true,
     },
     {
         name = "Thunderstorm",
@@ -105,7 +104,6 @@ DB.Cooldowns = {
         baseCooldown = 45,  -- 45 seconds
         description = "AoE damage and knockback, restores mana",
         talent = "Elemental",
-        wotlkOnly = true,
     },
     {
         name = "Riptide",
@@ -115,8 +113,6 @@ DB.Cooldowns = {
         baseCooldown = 6,  -- 6 seconds
         description = "Instant heal with HoT component",
         talent = "Restoration",
-        wotlkOnly = true,
-        shortCooldown = true,  -- Don't show in long cooldown tracker
     },
 }
 
@@ -173,22 +169,10 @@ function DB:GetCooldownsByCategory(category)
     return result
 end
 
---- Get cooldowns that are appropriate for the current expansion
----@param isWotLK boolean Whether running on WotLK
+--- Get all available cooldowns
 ---@return table
-function DB:GetAvailableCooldowns(isWotLK)
-    local result = {}
-    for _, spell in ipairs(self.Cooldowns) do
-        -- Skip short cooldowns (not for the tracker)
-        if spell.shortCooldown then
-            -- Skip
-        elseif spell.wotlkOnly and not isWotLK then
-            -- Skip WotLK-only spells on TBC
-        else
-            table.insert(result, spell)
-        end
-    end
-    return result
+function DB:GetAvailableCooldowns()
+    return self.Cooldowns
 end
 
 --- Get the current cooldown remaining for a spell

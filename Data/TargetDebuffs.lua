@@ -77,7 +77,6 @@ DB.Debuffs = {
         description = "Guaranteed crit if Flame Shock is on target",
         hasDuration = false,  -- Instant, but consumes Flame Shock in some versions
         priority = 1,
-        wotlkOnly = true,
         trackFlameShockConsumption = true,  -- Special flag
     },
 }
@@ -134,19 +133,10 @@ function DB:GetAllDebuffs()
     return self.Debuffs
 end
 
---- Get debuffs appropriate for current expansion
----@param isWotLK boolean
+--- Get all available debuffs
 ---@return table
-function DB:GetAvailableDebuffs(isWotLK)
-    local result = {}
-    for _, debuff in ipairs(self.Debuffs) do
-        if debuff.wotlkOnly and not isWotLK then
-            -- Skip WotLK-only debuffs
-        else
-            table.insert(result, debuff)
-        end
-    end
-    return result
+function DB:GetAvailableDebuffs()
+    return self.Debuffs
 end
 
 --- Scan target for a specific debuff

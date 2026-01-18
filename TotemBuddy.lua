@@ -425,6 +425,58 @@ function TotemBuddy:SlashCommand(input)
             self:Print("Set count: " .. TotemSets:GetSetCount())
             self:Print("Pending set: " .. tostring(TotemSets:HasPending() and "yes" or "no"))
         end
+
+    elseif cmd == "esdebug" then
+        -- Earth Shield debug
+        local ShieldTile = TotemBuddyLoader:ImportModule("ShieldTile")
+        if not ShieldTile then
+            self:Print("ShieldTile module not loaded")
+            return
+        end
+
+        if args == "on" then
+            -- Enable verbose logging (set both flags)
+            TotemBuddy.esDebugMode = true
+            if ShieldTile.private then
+                ShieldTile.private.debugMode = true
+            end
+            self:Print("Earth Shield debug logging |cff00ff00ENABLED|r")
+            self:Print("Cast ANY spell to see if events fire")
+        elseif args == "off" then
+            -- Disable verbose logging
+            TotemBuddy.esDebugMode = false
+            if ShieldTile.private then
+                ShieldTile.private.debugMode = false
+            end
+            self:Print("Earth Shield debug logging |cffff0000DISABLED|r")
+        else
+            -- Show current state
+            if ShieldTile.PrintDebugInfo then
+                ShieldTile:PrintDebugInfo()
+            end
+            self:Print(" ")
+            self:Print("Usage: /tb esdebug [on|off]")
+            self:Print("  on  - Enable verbose event logging")
+            self:Print("  off - Disable verbose event logging")
+        end
+
+    elseif cmd == "esscan" then
+        -- Force scan for Earth Shield
+        local ShieldTile = TotemBuddyLoader:ImportModule("ShieldTile")
+        if not ShieldTile then
+            self:Print("ShieldTile module not loaded")
+            return
+        end
+
+        if ShieldTile.ForceScan then
+            local found, name, charges = ShieldTile:ForceScan()
+            if found then
+                self:Print("Earth Shield found on |cff00ff00" .. tostring(name) .. "|r (" .. tostring(charges) .. " charges)")
+            else
+                self:Print("No Earth Shield found on any party/raid member")
+            end
+        end
+
     elseif cmd == "show" then
         -- Force show the bar
         local TotemBar = TotemBuddyLoader:ImportModule("TotemBar")
@@ -447,6 +499,8 @@ function TotemBuddy:SlashCommand(input)
         self:Print("  /tb scan - Rescan totems")
         self:Print("  /tb show - Force show bar")
         self:Print("  /tb debug - Show debug info")
+        self:Print("  /tb esdebug - Earth Shield debug info")
+        self:Print("  /tb esdebug on|off - Toggle ES event logging")
         self:Print("Set Commands:")
         self:Print("  /tb set <name> - Activate a set")
         self:Print("  /tb sets - List all sets")

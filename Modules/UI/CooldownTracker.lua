@@ -34,12 +34,6 @@ local function GetDB()
     return LongCooldowns
 end
 
---- Check if running WotLK
-local function IsWotLK()
-    local _, _, _, interfaceVersion = GetBuildInfo()
-    return interfaceVersion and interfaceVersion >= 30000
-end
-
 --- Scan for known cooldown spells
 function _CooldownTracker.ScanKnownCooldowns()
     local db = GetDB()
@@ -47,7 +41,7 @@ function _CooldownTracker.ScanKnownCooldowns()
 
     _CooldownTracker.knownCooldowns = {}
 
-    local availableCooldowns = db:GetAvailableCooldowns(IsWotLK())
+    local availableCooldowns = db:GetAvailableCooldowns()
 
     for _, spell in ipairs(availableCooldowns) do
         -- Check faction for Bloodlust/Heroism

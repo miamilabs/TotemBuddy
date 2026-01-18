@@ -42,9 +42,16 @@ TotemBar.debuffTrackerFrame = nil
 TotemBar.procTrackerFrame = nil
 
 --- Create the totem bar
+--- NOTE: Creates SecureActionButtonTemplate frames, cannot run during combat
 function TotemBar:Create()
     if self.frame then
         return self.frame
+    end
+
+    -- Cannot create secure frames during combat
+    if InCombatLockdown() then
+        self.pendingCreate = true
+        return nil
     end
 
     -- Get modules
@@ -165,8 +172,15 @@ function TotemBar:RestorePosition()
 end
 
 --- Update the layout (horizontal, vertical, grid)
+--- NOTE: This function modifies secure frames and cannot run during combat
 function TotemBar:UpdateLayout()
     if not self.frame or not self.tiles then
+        return
+    end
+
+    -- Cannot modify secure frame attributes/positions during combat
+    if InCombatLockdown() then
+        self.pendingLayoutUpdate = true
         return
     end
 
@@ -591,8 +605,15 @@ end
 -- =============================================================================
 
 --- Create the extra tiles (Call, Imbues, Shield)
+--- NOTE: Creates SecureActionButtonTemplate frames, cannot run during combat
 function TotemBar:CreateExtraTiles()
     if not self.frame then return end
+
+    -- Cannot create secure frames during combat
+    if InCombatLockdown() then
+        self.pendingCreateExtras = true
+        return
+    end
 
     -- Get modules if needed
     if not CallTile then CallTile = TotemBuddyLoader:ImportModule("CallTile") end
@@ -600,26 +621,32 @@ function TotemBar:CreateExtraTiles()
     if not ShieldTile then ShieldTile = TotemBuddyLoader:ImportModule("ShieldTile") end
     if not ExtrasScanner then ExtrasScanner = TotemBuddyLoader:ImportModule("ExtrasScanner") end
 
-    -- Create Call tiles (up to 3)
-    self.callTiles = {}
-    if CallTile then
-        for i = 1, 3 do
-            self.callTiles[i] = CallTile:Create(self.frame, i)
-            self.callTiles[i]:Hide()  -- Hidden by default
+    -- Create Call tiles (up to 3) - only if not already created
+    if not self.callTiles or #self.callTiles == 0 then
+        self.callTiles = {}
+        if CallTile then
+            for i = 1, 3 do
+                self.callTiles[i] = CallTile:Create(self.frame, i)
+                self.callTiles[i]:Hide()  -- Hidden by default
+            end
         end
     end
 
-    -- Create Imbue tiles (Mainhand + Offhand)
+    -- Create Imbue tiles (Mainhand + Offhand) - only if not already created
     if ImbueTile then
-        self.imbueMH = ImbueTile:Create(self.frame, "mainhand")
-        self.imbueMH:Hide()
+        if not self.imbueMH then
+            self.imbueMH = ImbueTile:Create(self.frame, "mainhand")
+            self.imbueMH:Hide()
+        end
 
-        self.imbueOH = ImbueTile:Create(self.frame, "offhand")
-        self.imbueOH:Hide()
+        if not self.imbueOH then
+            self.imbueOH = ImbueTile:Create(self.frame, "offhand")
+            self.imbueOH:Hide()
+        end
     end
 
-    -- Create Shield tile
-    if ShieldTile then
+    -- Create Shield tile - only if not already created
+    if ShieldTile and not self.shieldTile then
         self.shieldTile = ShieldTile:Create(self.frame)
         self.shieldTile:Hide()
     end
@@ -918,6 +945,15 @@ end
 function TotemBar:ProcessPendingExtras()
     local db = TotemBuddy.db.profile
 
+    -- Handle pending extra tile creation (from CreateExtraTiles during combat)
+    if self.pendingCreateExtras then
+        self.pendingCreateExtras = false
+        self:CreateExtraTiles()
+        self:RefreshAllExtras()
+        self:UpdateExtrasVisibility()
+        self:UpdateLayout()
+    end
+
     -- Process pending Call tile attributes
     if self.callTiles then
         for _, tile in ipairs(self.callTiles) do
@@ -971,6 +1007,12 @@ function TotemBar:ProcessPendingExtras()
     if self.pendingExtrasUpdate then
         self.pendingExtrasUpdate = false
         self:UpdateExtrasVisibility()
+        self:UpdateLayout()
+    end
+
+    -- Handle pending layout update (from UpdateLayout called during combat)
+    if self.pendingLayoutUpdate then
+        self.pendingLayoutUpdate = false
         self:UpdateLayout()
     end
 end

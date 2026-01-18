@@ -156,23 +156,121 @@ function EventHandler:RegisterEvents()
         _EventHandler:OnEarthShieldTargetAuraChanged(unit)
     end))
 
-    -- Spellcast events (for Earth Shield target tracking - more reliable than CLEU)
-    TotemBuddy:RegisterEvent("UNIT_SPELLCAST_SENT", SafeHandler("UNIT_SPELLCAST_SENT", function(_, unit, target, castGUID, spellID)
-        if unit == "player" then
-            _EventHandler:OnSpellcastSent(target, castGUID, spellID)
-        end
-    end))
+    -- Earth Shield tracking via Combat Log (authoritative method)
+    -- UNIT_SPELLCAST_SENT is just a hint; CLEU SPELL_AURA_APPLIED is authoritative
+    local earthShieldFrame = CreateFrame("Frame")
+    earthShieldFrame:RegisterEvent("UNIT_SPELLCAST_SENT")
+    earthShieldFrame:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
+    earthShieldFrame:RegisterUnitEvent("UNIT_SPELLCAST_FAILED", "player")
+    earthShieldFrame:RegisterUnitEvent("UNIT_SPELLCAST_INTERRUPTED", "player")
+    earthShieldFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+    earthShieldFrame:SetScript("OnEvent", function(self, event, ...)
+        if event == "UNIT_SPELLCAST_SENT" then
+            -- TBC/Classic signature: (unit, spellName, rank, target)
+            -- Modern/Retail signature: (unit, target, castGUID, spellID)
+            local unit, arg2, arg3, arg4 = ...
+            if TotemBuddy.esDebugMode then
+                print("|cff00ffffES Debug:|r UNIT_SPELLCAST_SENT args: 1=" .. tostring(unit) .. " 2=" .. tostring(arg2) .. " 3=" .. tostring(arg3) .. " 4=" .. tostring(arg4))
+            end
+            if unit == "player" then
+                local target, castGUID, spellID, spellName
 
-    TotemBuddy:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED", SafeHandler("UNIT_SPELLCAST_SUCCEEDED", function(_, unit, castGUID, spellID)
-        if unit == "player" then
-            _EventHandler:OnSpellcastSucceeded(castGUID, spellID)
-        end
-    end))
+                -- Detect signature by checking if arg4 is a number (spellID in modern clients)
+                if type(arg4) == "number" then
+                    -- Modern signature: unit, target, castGUID, spellID
+                    target, castGUID, spellID = arg2, arg3, arg4
+                    spellName = GetSpellInfo(spellID)
+                elseif type(arg3) == "number" then
+                    -- Alternative modern: unit, target, spellID (no castGUID)
+                    target, spellID = arg2, arg3
+                    spellName = GetSpellInfo(spellID)
+                else
+                    -- TBC/Classic signature: unit, spellName, rank, target
+                    -- arg2 = spell name (e.g., "Earth Shield")
+                    -- arg3 = rank (e.g., "Rank 1" or nil)
+                    -- arg4 = target name or unit token (may be nil for self-cast)
+                    spellName = arg2
+                    target = arg4  -- DO NOT fallback to arg2! nil is fine, handled in ShieldTile
+                    -- spellID stays nil - ShieldTile will match by spellName
+                end
 
-    -- Combat Log (for Earth Shield tracking on party members, debuff tracking, etc.)
-    TotemBuddy:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED", SafeHandler("COMBAT_LOG_EVENT_UNFILTERED", function()
-        _EventHandler:OnCombatLogEvent(CombatLogGetCurrentEventInfo())
-    end))
+                _EventHandler:OnSpellcastSent(target, castGUID, spellID, spellName)
+            end
+            return
+        end
+
+        if event == "UNIT_SPELLCAST_SUCCEEDED" then
+            -- TBC/Classic signature: (unit, spellName, rank)
+            -- Modern signature: (unit, castGUID, spellID)
+            local unit, arg2, arg3 = ...
+
+            local castGUID, spellID, spellName
+            if type(arg3) == "number" then
+                -- Modern: arg2 = castGUID, arg3 = spellID
+                castGUID, spellID = arg2, arg3
+                spellName = GetSpellInfo(spellID)
+            else
+                -- TBC/Classic: arg2 = spellName, arg3 = rank (or nil)
+                -- No castGUID available - we'll match by spellName instead
+                spellName = arg2
+                castGUID = nil
+                spellID = nil
+            end
+
+            if TotemBuddy.esDebugMode then
+                print("|cff00ffffES Debug:|r UNIT_SPELLCAST_SUCCEEDED castGUID=" .. tostring(castGUID) .. " spellID=" .. tostring(spellID) .. " spellName=" .. tostring(spellName))
+            end
+            -- unit is "player" because we used RegisterUnitEvent
+            _EventHandler:OnSpellcastSucceeded(castGUID, spellID, spellName)
+            return
+        end
+
+        if event == "UNIT_SPELLCAST_FAILED" or event == "UNIT_SPELLCAST_INTERRUPTED" then
+            -- TBC/Classic signature: (unit, spellName, rank)
+            -- Modern signature: (unit, castGUID, spellID)
+            local unit, arg2, arg3 = ...
+
+            local spellName
+            if type(arg3) == "number" then
+                -- Modern: arg2 = castGUID, arg3 = spellID
+                spellName = GetSpellInfo(arg3)
+            else
+                -- TBC/Classic: arg2 = spellName
+                spellName = arg2
+            end
+
+            if TotemBuddy.esDebugMode then
+                print("|cff00ffffES Debug:|r " .. event .. " spellName=" .. tostring(spellName))
+            end
+            _EventHandler:OnSpellcastFailed(spellName)
+            return
+        end
+
+        -- COMBAT_LOG_EVENT_UNFILTERED - this is the authoritative source
+        local timestamp, subevent, _, srcGUID, srcName, _, _, dstGUID, dstName, _, _, spellID, spellName = CombatLogGetCurrentEventInfo()
+
+        -- Debug: show all player aura events
+        local playerGUID = UnitGUID("player")
+
+        -- Debug: check if Earth Shield aura events are coming through at all
+        if TotemBuddy.esDebugMode and subevent and subevent:find("AURA") then
+            local esName = GetSpellInfo(974) -- Earth Shield
+            if spellName == esName or spellID == 974 or spellID == 32593 or spellID == 32594 then
+                print("|cffff00ffES CLEU RAW:|r " .. tostring(subevent) .. " src=" .. tostring(srcName) .. " dest=" .. tostring(dstName) .. " spell=" .. tostring(spellID) .. "/" .. tostring(spellName))
+            end
+        end
+
+        if TotemBuddy.esDebugMode and srcGUID == playerGUID and (subevent:find("AURA") or subevent:find("CAST")) then
+            print("|cff00ffffES Debug CLEU:|r " .. tostring(subevent) .. " spell=" .. tostring(spellID) .. "/" .. tostring(spellName) .. " dest=" .. tostring(dstName))
+        end
+
+        -- Forward to the CLEU dispatcher for all handlers (including ShieldTile)
+        -- NOTE: ShieldTile registers its own handler via RegisterCLEUHandler, so we only
+        -- dispatch once here. Previously there was a direct call that caused duplicate processing.
+        _EventHandler:OnCombatLogEvent(timestamp, subevent, nil, srcGUID, srcName, nil, nil, dstGUID, dstName, nil, nil, spellID, spellName)
+    end)
+
+    TotemBuddy.earthShieldFrame = earthShieldFrame
 
     -- Group roster changes (for Earth Shield target tracking)
     TotemBuddy:RegisterEvent("GROUP_ROSTER_UPDATE", SafeHandler("GROUP_ROSTER_UPDATE", function()
@@ -222,6 +320,15 @@ function _EventHandler:OnPlayerEnteringWorld()
                 TotemBar:Show()
             end
         end
+
+        -- Scan for existing Earth Shield on party/raid members
+        if ShieldTile and ShieldTile.private and ShieldTile.private.ScanAllUnitsForEarthShield then
+            ShieldTile.private.ScanAllUnitsForEarthShield()
+            -- Update display if found
+            if TotemBar and TotemBar.shieldTile and TotemBar.shieldTile.UpdateStatus then
+                TotemBar.shieldTile:UpdateStatus()
+            end
+        end
     end)
 end
 
@@ -266,6 +373,20 @@ end
 --- Called when leaving combat
 function _EventHandler:OnLeaveCombat()
     GetModules()
+
+    -- Handle pending TotemBar creation (from Create() during combat)
+    if TotemBar and TotemBar.pendingCreate then
+        TotemBar.pendingCreate = false
+        TotemBar:Create()
+        TotemBar:RefreshAllTiles()
+        TotemBar:CreateExtraTiles()
+        TotemBar:RefreshAllExtras()
+        TotemBar:UpdateExtrasVisibility()
+        TotemBar:UpdateLayout()
+        if TotemBuddy.db.profile.enabled then
+            TotemBar:Show()
+        end
+    end
 
     -- Restore lock state based on settings
     if TotemBar and TotemBar.SetLocked then
@@ -424,25 +545,38 @@ end
 --- Called when player starts casting a spell (for Earth Shield target capture)
 ---@param target string The target name or unit
 ---@param castGUID string The cast GUID
----@param spellID number The spell ID
-function _EventHandler:OnSpellcastSent(target, castGUID, spellID)
+---@param spellID number|nil The spell ID (may be nil on Classic/TBC clients)
+---@param spellName string|nil The spell name (fallback for Classic/TBC clients)
+function _EventHandler:OnSpellcastSent(target, castGUID, spellID, spellName)
     GetModules()
 
     -- Forward to ShieldTile for Earth Shield tracking
     if ShieldTile and ShieldTile.private and ShieldTile.private.OnSpellcastSent then
-        ShieldTile.private.OnSpellcastSent(target, castGUID, spellID)
+        ShieldTile.private.OnSpellcastSent(target, castGUID, spellID, spellName)
     end
 end
 
 --- Called when player's spell cast succeeds (for Earth Shield target confirmation)
----@param castGUID string The cast GUID
----@param spellID number The spell ID
-function _EventHandler:OnSpellcastSucceeded(castGUID, spellID)
+---@param castGUID string|nil The cast GUID (nil on TBC/Classic)
+---@param spellID number|nil The spell ID (nil on TBC/Classic)
+---@param spellName string|nil The spell name (for TBC/Classic fallback)
+function _EventHandler:OnSpellcastSucceeded(castGUID, spellID, spellName)
     GetModules()
 
     -- Forward to ShieldTile for Earth Shield tracking
     if ShieldTile and ShieldTile.private and ShieldTile.private.OnSpellcastSucceeded then
-        ShieldTile.private.OnSpellcastSucceeded(castGUID)
+        ShieldTile.private.OnSpellcastSucceeded(castGUID, spellID, spellName)
+    end
+end
+
+--- Called when player's spell cast fails or is interrupted (clears pending Earth Shield state)
+---@param spellName string|nil The spell name
+function _EventHandler:OnSpellcastFailed(spellName)
+    GetModules()
+
+    -- Forward to ShieldTile to clear pending Earth Shield cast state
+    if ShieldTile and ShieldTile.private and ShieldTile.private.ClearPendingCast then
+        ShieldTile.private.ClearPendingCast(spellName)
     end
 end
 
@@ -472,9 +606,10 @@ function _EventHandler:OnCombatLogEvent(timestamp, subevent, hideCaster, sourceG
     for moduleName, callback in pairs(handlers) do
         local ok, err = pcall(callback, timestamp, subevent, hideCaster, sourceGUID, sourceName, sourceFlags, sourceRaidFlags, destGUID, destName, destFlags, destRaidFlags, ...)
         if not ok and TotemBuddy and TotemBuddy.Print then
-            -- Silent error by default (CLEU fires frequently)
-            -- Enable debug output via profile setting if needed
-            if TotemBuddy.db and TotemBuddy.db.profile and TotemBuddy.db.profile.debugCLEUHandlers then
+            -- Show errors in debug mode
+            if TotemBuddy.esDebugMode then
+                TotemBuddy:Print("|cffff0000CLEU error in " .. moduleName .. ":|r " .. tostring(err))
+            elseif TotemBuddy.db and TotemBuddy.db.profile and TotemBuddy.db.profile.debugCLEUHandlers then
                 TotemBuddy:Print("|cffff0000CLEU error in " .. moduleName .. ":|r " .. tostring(err))
             end
         end
@@ -520,6 +655,12 @@ function EventHandler:Cleanup()
     if _EventHandler.cooldownDebounce then
         _EventHandler.cooldownDebounce:Cancel()
         _EventHandler.cooldownDebounce = nil
+    end
+
+    -- Cancel aura debounce timer
+    if _EventHandler.auraDebounce then
+        _EventHandler.auraDebounce:Cancel()
+        _EventHandler.auraDebounce = nil
     end
 
     -- Reset state

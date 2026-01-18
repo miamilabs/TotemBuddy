@@ -56,19 +56,6 @@ DB.Procs = {
         consumedOnCast = true,
     },
 
-    -- Focused (from Focused Mind set bonus or similar)
-    -- This might not exist in TBC but keeping for completeness
-    {
-        name = "Focused",
-        buffName = "Focused",
-        spellIds = {43339},  -- Example, may need verification
-        icon = "Interface\\Icons\\Spell_Nature_Purge",
-        category = "haste",
-        description = "Casting speed increased",
-        priority = 3,
-        wotlkOnly = true,
-    },
-
     -- Lightning Shield charges tracking (not exactly a proc, but useful)
     -- This is handled separately in ShieldTile
 
@@ -84,7 +71,6 @@ DB.Procs = {
         maxStacks = 5,
         talent = "Enhancement",
         priority = 1,
-        wotlkOnly = true,
     },
 
     {
@@ -97,7 +83,6 @@ DB.Procs = {
         charges = 2,
         talent = "Restoration",
         priority = 2,
-        wotlkOnly = true,
     },
 
     {
@@ -109,7 +94,6 @@ DB.Procs = {
         description = "Increases spell haste",
         talent = "Elemental",
         priority = 3,
-        wotlkOnly = true,
     },
 }
 
@@ -173,19 +157,10 @@ function DB:GetAllProcs()
     return self.Procs
 end
 
---- Get procs appropriate for current expansion
----@param isWotLK boolean
+--- Get all available procs
 ---@return table
-function DB:GetAvailableProcs(isWotLK)
-    local result = {}
-    for _, proc in ipairs(self.Procs) do
-        if proc.wotlkOnly and not isWotLK then
-            -- Skip WotLK-only procs
-        else
-            table.insert(result, proc)
-        end
-    end
-    return result
+function DB:GetAvailableProcs()
+    return self.Procs
 end
 
 --- Scan player buffs for active procs

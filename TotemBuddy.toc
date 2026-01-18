@@ -1,7 +1,7 @@
-## Interface: 11503
+## Interface: 38000
 ## Title: TotemBuddy
-## Notes: Shaman totem management with quick-access tiles and flexible layout. Requires Ace3!
-## Notes-deDE: Schamanen-Totemverwaltung mit Schnellzugriff und flexibler Anordnung. Erfordert Ace3!
+## Notes: Shaman totem management with quick-access tiles and flexible layout
+## Notes-deDE: Schamanen-Totemverwaltung mit Schnellzugriff und flexibler Anordnung
 ## Author: Paul
 ## Version: 2.0.0
 ## SavedVariables: TotemBuddyDB
@@ -27,11 +27,9 @@ Localization\deDE.lua
 
 # Data
 Data\ClassicTotems.lua
+Data\TBCTotems.lua
+Data\WotLKTotems.lua
 Data\ShamanExtras.lua
-Data\WeaponEnchants.lua
-Data\LongCooldowns.lua
-Data\TargetDebuffs.lua
-Data\ShamanProcs.lua
 
 # Core Modules (APICompat and Migration must load before EventHandler)
 Modules\Core\APICompat.lua
@@ -41,7 +39,6 @@ Modules\Core\EventHandler.lua
 Modules\Core\TotemData.lua
 Modules\Core\SpellScanner.lua
 Modules\Core\ExtrasScanner.lua
-Modules\Core\WarningManager.lua
 
 # Options
 Modules\Options\OptionsDefaults.lua
@@ -59,7 +56,4 @@ Modules\UI\ImbueTile.lua
 Modules\UI\ImbueSelector.lua
 Modules\UI\ShieldTile.lua
 Modules\UI\ShieldSelector.lua
-Modules\UI\CooldownTracker.lua
-Modules\UI\DebuffTracker.lua
-Modules\UI\ProcTracker.lua
 Modules\UI\TotemBar.lua

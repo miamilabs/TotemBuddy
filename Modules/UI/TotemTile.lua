@@ -41,9 +41,9 @@ function TotemTile:Create(parent, elementIndex)
     tile.cooldown:SetDrawEdge(true)
     tile.cooldown:SetHideCountdownNumbers(true)  -- We'll show our own
 
-    -- Cooldown text (shows remaining cooldown)
+    -- Cooldown text (shows remaining cooldown) - positioned at top to avoid overlap with duration text
     tile.cooldownText = tile:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
-    tile.cooldownText:SetPoint("CENTER", 0, 0)
+    tile.cooldownText:SetPoint("TOP", 0, -2)
     tile.cooldownText:SetTextColor(1, 0.2, 0.2, 1)
     tile.cooldownText:SetShadowOffset(1, -1)
     tile.cooldownText:Hide()
