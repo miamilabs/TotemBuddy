@@ -21,10 +21,11 @@ local WATER = 3
 local AIR = 4
 
 -- WotLK Earth Totems
+-- Note: Ranks through TBC (Stoneclaw R7, Stoneskin R7-8, Strength of Earth R6) are in TBCTotems.lua
 local wotlkEarth = {
-    -- Stoneclaw Totem Rank 7-8
-    -- Stoneskin Totem Rank 7-8
-    -- Strength of Earth Totem Rank 6-7
+    -- Stoneclaw Totem Rank 8 (WotLK)
+    -- Stoneskin Totem Rank 9-10 (WotLK)
+    -- Strength of Earth Totem Rank 7-8 (WotLK)
 }
 
 -- WotLK Fire Totems
@@ -37,9 +38,10 @@ local wotlkFire = {
         levelRequired = 50,
         talentRequired = true,
     },
-    -- Searing Totem Rank 7-9
-    -- Magma Totem Rank 5-7
-    -- Flametongue Totem Rank 5
+    -- Note: TBC ranks (Searing R7, Fire Nova R6-7, Magma R5, Flametongue R5, Frost Res R4) are in TBCTotems.lua
+    -- Searing Totem Rank 8-9 (WotLK)
+    -- Magma Totem Rank 6-7 (WotLK)
+    -- Flametongue Totem Rank 6 (WotLK)
 }
 
 -- WotLK Water Totems
@@ -51,22 +53,27 @@ local wotlkWater = {
         element = WATER,
         levelRequired = 38,
     },
-    -- Healing Stream Totem Rank 6-9
-    -- Mana Spring Totem Rank 5
+    -- Note: TBC ranks (Healing Stream R6, Mana Spring R5, Fire Res R4) are in TBCTotems.lua
+    -- Healing Stream Totem Rank 7-9 (WotLK)
+    -- Mana Spring Totem Rank 6 (WotLK)
 }
 
 -- WotLK Air Totems
+-- Note: TBC ranks (Windfury R4-5, Windwall R4, Nature Res R4) are in TBCTotems.lua
 local wotlkAir = {
-    -- Grace of Air Totem replaced by Windfury in WotLK
-    -- Windfury Totem Rank 4-5
+    -- Grace of Air Totem removed in WotLK
 }
 
 -- Merge WotLK totems into main database
 local function MergeTotems(element, newTotems)
+    if not Database[element] then
+        return
+    end
+
     for _, totem in ipairs(newTotems) do
         -- Check if totem already exists (update vs add)
         local found = false
-        for i, existing in ipairs(Database[element]) do
+        for _, existing in ipairs(Database[element]) do
             if existing.name == totem.name then
                 -- Update existing totem with new ranks
                 for _, spellId in ipairs(totem.spellIds) do

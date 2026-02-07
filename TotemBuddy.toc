@@ -3,7 +3,7 @@
 ## Notes: Shaman totem management with quick-access tiles and flexible layout
 ## Notes-deDE: Schamanen-Totemverwaltung mit Schnellzugriff und flexibler Anordnung
 ## Author: Paul
-## Version: 2.5
+## Version: 2.6
 ## SavedVariables: TotemBuddyDB
 ## OptionalDeps: Ace3
 ## X-Category: Shaman

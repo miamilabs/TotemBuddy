@@ -345,12 +345,12 @@ function _ImbueTile.GetActiveEnchantInfo(tile)
         return false, nil, nil, nil, nil
     end
 
-    -- Normalize expiration units: some clients return ms, others return seconds
+    -- Normalize expiration to seconds
+    -- GetWeaponEnchantInfo() returns milliseconds in TBC/Classic clients.
+    -- Imbues last at most 30 min (1800s), so any value above that is in ms.
     local remainingSeconds = nil
     if expiration and expiration > 0 then
-        -- If value > 100000, treat as milliseconds (> ~1.6 minutes in ms)
-        -- Otherwise treat as seconds (imbues last 30 min = 1800 seconds max)
-        if expiration > 100000 then
+        if expiration > 1800 then
             remainingSeconds = expiration / 1000
         else
             remainingSeconds = expiration
